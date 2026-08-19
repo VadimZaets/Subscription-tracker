@@ -1,0 +1,11 @@
+# Формат: <type>(<scope>): <description>
+# Типи: feat | fix | refactor | style | chore | docs | build | ci | perf | revert
+#
+# Приклади:
+# feat(auth): add Apple Sign-In
+# fix(devices): crash on mDNS timeout
+# refactor(shop): extract CartHeaderButton
+# chore: update dependencies
+#
+# Scope — область змін (опціонально)
+# Description — імператив, сьогочасний час ("add", не "added")
