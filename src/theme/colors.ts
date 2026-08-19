@@ -1,3 +1,5 @@
+import { Category } from '@/types/category.types';
+
 export type ThemeColors = {
   bg: string;
   text: string;
@@ -41,4 +43,14 @@ export const darkColors: ThemeColors = {
   onAccentGlass: 'rgba(255,255,255,.18)',
   scrim: 'rgba(0,0,0,.55)',
   transparent: 'transparent',
+};
+
+/** Фолбек-колір категорії, коли мерчант не знайдено в src/ocr/merchants.catalog.ts. */
+export const categoryColors: Record<Category, string> = {
+  streaming: '#E44830',
+  software: '#504ECA',
+  fitness: '#DCB85C',
+  games: '#9146FF',
+  cloud: '#3ED598',
+  other: '#BABCC1',
 };

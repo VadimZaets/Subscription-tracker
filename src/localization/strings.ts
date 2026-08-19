@@ -92,6 +92,12 @@ export const strings = {
     yearly: 'Рік',
     once: 'Разово',
   },
+  cycleAdverbs: {
+    weekly: 'щотижня',
+    monthly: 'щомісяця',
+    yearly: 'щороку',
+    once: 'один раз',
+  },
   confirm: {
     title: 'Перевір дані',
     sourceLabel: 'Джерело: чек',
