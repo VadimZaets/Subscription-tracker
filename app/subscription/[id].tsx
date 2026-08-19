@@ -29,13 +29,16 @@ const SubscriptionDetail = () => {
 
   const handleCancel = useCallback(() => {
     if (!sub) return;
-    updateSubscriptionStatus(sub.id, 'cancelled');
+    // Drizzle-запити ледачі — виконуються лише коли їх await/then/catch-нути.
+    updateSubscriptionStatus(sub.id, 'cancelled').catch(console.error);
     openSubscriptionSettings();
   }, [sub]);
 
   const handlePause = useCallback(() => {
     if (!sub) return;
-    updateSubscriptionStatus(sub.id, sub.status === 'paused' ? 'active' : 'paused');
+    updateSubscriptionStatus(sub.id, sub.status === 'paused' ? 'active' : 'paused').catch(
+      console.error,
+    );
   }, [sub]);
 
   if (!sub) {

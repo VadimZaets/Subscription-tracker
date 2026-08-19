@@ -1,4 +1,4 @@
-import { formatShortDate, formatWhen } from '@/lib/format/date';
+import { formatShortDate, formatWhen, toLocalIsoDate } from '@/lib/format/date';
 
 describe('formatWhen', () => {
   const now = new Date(2026, 7, 19); // 19 серпня 2026
@@ -48,5 +48,20 @@ describe('formatWhen', () => {
 describe('formatShortDate', () => {
   it('формує "день місяць" українською', () => {
     expect(formatShortDate('2026-08-21')).toBe('21 серп');
+  });
+});
+
+describe('toLocalIsoDate', () => {
+  it('бере локальні компоненти дати, не toISOString (який зсуває в UTC)', () => {
+    expect(toLocalIsoDate(new Date(2026, 7, 23))).toBe('2026-08-23');
+  });
+
+  it('доповнює нулем однозначні місяць і день', () => {
+    expect(toLocalIsoDate(new Date(2026, 0, 5))).toBe('2026-01-05');
+  });
+
+  it('є оберненою до parseIsoDate — round-trip не змінює дату', () => {
+    const original = new Date(2026, 11, 31);
+    expect(toLocalIsoDate(original)).toBe('2026-12-31');
   });
 });

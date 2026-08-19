@@ -1,4 +1,7 @@
-import ReactNativeTextRecognition from '@dariyd/react-native-text-recognition';
+import {
+  getSupportedLanguages,
+  recognizeText as vendorRecognizeText,
+} from '@dariyd/react-native-text-recognition';
 
 export type OcrBlock = {
   text: string;
@@ -14,9 +17,13 @@ export type OcrResult = {
 /**
  * Єдина точка входу в OCR. Ніщо поза src/ocr/ не імпортує вендорний пакет напряму —
  * заміна реалізації (ML Kit / власний Expo-модуль) зводиться до зміни цього файлу.
+ *
+ * Пакет експортує callback-based нативний модуль через `export default`, і окремо —
+ * Promise-обгортку над ним як named export `recognizeText`. Саме її й треба звати;
+ * виклик default-export-у напряму повертає undefined замість результату.
  */
 export const recognizeText = async (uri: string, languages?: string[]): Promise<OcrResult> => {
-  const result = await ReactNativeTextRecognition.recognizeText(uri, {
+  const result = await vendorRecognizeText(uri, {
     recognitionLevel: 'line',
     languages,
   });
@@ -37,5 +44,4 @@ export const recognizeText = async (uri: string, languages?: string[]): Promise<
   };
 };
 
-export const getSupportedOcrLanguages = (): Promise<string[]> =>
-  ReactNativeTextRecognition.getSupportedLanguages();
+export const getSupportedOcrLanguages = (): Promise<string[]> => getSupportedLanguages();

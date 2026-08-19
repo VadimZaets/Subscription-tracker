@@ -2,6 +2,12 @@ export const strings = {
   common: {
     back: '← Назад',
     close: 'Закрити',
+    cancel: 'Скасувати',
+  },
+  action: {
+    camera: 'Зробити фото',
+    gallery: 'Вивантажити фото',
+    manual: 'Ввести вручну',
   },
   onboarding: {
     eyebrow: 'SNAPSY',
@@ -37,8 +43,7 @@ export const strings = {
     thisMonth: 'Цього місяця',
     timelineTitle: 'Хронологія списань',
     timelineCount: (count: number) => `${count} усього`,
-    yearlySummary: (yearlyAmount: string, activeCount: number) =>
-      `≈ ${yearlyAmount} на рік · ${activeCount} активних`,
+    yearlySummary: (yearlyAmount: string) => `≈ ${yearlyAmount} на рік`,
     emptyTitle: 'Ще немає підписок',
   },
   settings: {
@@ -63,6 +68,9 @@ export const strings = {
     privacyPolicy: 'Політика приватності',
     privacyPolicySub: 'Розпізнавання — тільки на пристрої',
     deleteAll: 'Видалити всі дані',
+    deleteAllConfirmTitle: 'Видалити всі дані?',
+    deleteAllConfirmMessage: 'Усі підписки, платежі й документи буде видалено безповоротно.',
+    deleteAllConfirmAction: 'Видалити',
     groupSupport: 'Підтримка',
     help: 'Допомога',
     about: 'Про застосунок',
@@ -70,8 +78,6 @@ export const strings = {
   },
   add: {
     title: 'Нова підписка',
-    scanCtaTitle: 'Швидше через фото',
-    scanCtaSub: 'Відскануй чек — і не заповнюй вручну',
     merchantLabel: 'Мерчант',
     categoryLabel: 'Категорія',
     amountLabel: 'Сума',
@@ -103,14 +109,15 @@ export const strings = {
   },
   confirm: {
     title: 'Перевір дані',
-    sourceLabel: 'Джерело: чек',
+    recognizing: 'Розпізнаємо фото…',
     merchantLabel: 'Мерчант',
     amountLabel: 'Сума',
     periodLabel: 'Період',
-    periodWarn: 'Перевір',
-    nextChargeLabel: 'Наступне списання',
+    nextChargeLabel: 'Дата списання',
     save: 'Зберегти підписку',
     notASubscription: 'Це не підписка',
+    batchTitle: (count: number) => `Знайдено ${count} підписок`,
+    saveBatch: (count: number) => `Зберегти обрані (${count})`,
   },
   subscriptionDetail: {
     idPrefix: 'id: ',

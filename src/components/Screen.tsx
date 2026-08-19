@@ -9,9 +9,6 @@ import { uScale } from '@/utils/uScale';
  *  contentContainerStyle (а не на контейнер), щоб скролбар лишався біля краю. */
 export const SCREEN_PADDING_H = 20;
 
-/** Плаваючий таб-бар: bottom 18 + height 70 + зазор 12. */
-export const TAB_BAR_CLEARANCE = 100;
-
 type ScreenProps = PropsWithChildren<{
   style?: ViewStyle;
   /** false — контейнер без горизонтальних паддінгів (для повноширинного ScrollView). */

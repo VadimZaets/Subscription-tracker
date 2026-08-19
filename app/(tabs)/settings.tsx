@@ -2,9 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Screen, SCREEN_PADDING_H, TAB_BAR_CLEARANCE } from '@/components/Screen';
+import { Screen, SCREEN_PADDING_H } from '@/components/Screen';
+import { TAB_BAR_CLEARANCE } from '@/components/tabBar.constants';
+import { resetDatabase } from '@/db/queries/reset';
 import { strings } from '@/localization/strings';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
 import { uFont, uScale } from '@/utils/uScale';
@@ -15,6 +17,7 @@ type Row = {
   sub?: string;
   value?: string;
   danger?: boolean;
+  onPress?: () => void;
 };
 
 const Settings = () => {
@@ -23,6 +26,19 @@ const Settings = () => {
 
   const handleOpenPaywall = useCallback(() => {
     router.push('/paywall');
+  }, []);
+
+  const handleResetData = useCallback(() => {
+    Alert.alert(strings.settings.deleteAllConfirmTitle, strings.settings.deleteAllConfirmMessage, [
+      { text: strings.common.cancel, style: 'cancel' },
+      {
+        text: strings.settings.deleteAllConfirmAction,
+        style: 'destructive',
+        onPress: () => {
+          resetDatabase().catch(console.error);
+        },
+      },
+    ]);
   }, []);
 
   const accountRows: Row[] = [
@@ -53,7 +69,12 @@ const Settings = () => {
       title: strings.settings.privacyPolicy,
       sub: strings.settings.privacyPolicySub,
     },
-    { icon: 'trash-outline', title: strings.settings.deleteAll, danger: true },
+    {
+      icon: 'trash-outline',
+      title: strings.settings.deleteAll,
+      danger: true,
+      onPress: handleResetData,
+    },
   ];
   const supportRows: Row[] = [
     { icon: 'help-circle-outline', title: strings.settings.help },
@@ -65,7 +86,12 @@ const Settings = () => {
       <Text style={styles.groupLabel}>{label}</Text>
       <View style={styles.group}>
         {rows.map((row, index) => (
-          <View key={row.title} style={[styles.row, index < rows.length - 1 && styles.rowBorder]}>
+          <Pressable
+            key={row.title}
+            onPress={row.onPress}
+            disabled={!row.onPress}
+            style={[styles.row, index < rows.length - 1 && styles.rowBorder]}
+          >
             <View style={[styles.rowIcon, row.danger && styles.rowIconDanger]}>
               <Ionicons
                 name={row.icon}
@@ -80,7 +106,7 @@ const Settings = () => {
               {row.sub ? <Text style={styles.rowSub}>{row.sub}</Text> : null}
             </View>
             {row.value ? <Text style={styles.rowValue}>{row.value}</Text> : null}
-          </View>
+          </Pressable>
         ))}
       </View>
     </View>

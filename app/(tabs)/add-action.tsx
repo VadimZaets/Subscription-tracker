@@ -1,4 +1,4 @@
-// Не рендериться: tabPress-listener у _layout.tsx перехоплює тап і відкриває /add модалкою.
+// Не рендериться: SnapsyTabBar перехоплює цей таб і відкриває AddActionOverlay.
 // Файл потрібен лише щоб expo-router мав валідний route для цього таба.
 const AddActionPlaceholder = () => null;
 

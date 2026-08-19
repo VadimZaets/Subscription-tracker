@@ -24,6 +24,8 @@ export type TimelineRowProps = {
   price: string;
   cycle: string;
   isScanned?: boolean;
+  /** Останній рядок не малює риску-конектор від хребта до картки. */
+  isLast?: boolean;
 };
 
 export const TimelineRow = ({
@@ -36,6 +38,7 @@ export const TimelineRow = ({
   price,
   cycle,
   isScanned,
+  isLast,
 }: TimelineRowProps) => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -49,7 +52,7 @@ export const TimelineRow = ({
       </View>
 
       <View style={styles.cardWrap}>
-        <View style={styles.connector} />
+        {isLast ? null : <View style={styles.connector} />}
         <View style={styles.card}>
           <CategoryBadge category={category} color={categoryColor} size={38} />
           <View style={styles.mid}>

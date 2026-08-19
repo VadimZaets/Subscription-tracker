@@ -98,7 +98,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     amount: {
       fontFamily: fontFamilies.extraBold,
-      fontSize: uFont(38),
+      fontSize: uFont(46),
       color: colors.text,
       marginTop: uScale(10),
     },

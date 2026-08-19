@@ -12,7 +12,8 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 
-import { Screen, SCREEN_PADDING_H, TAB_BAR_CLEARANCE } from '@/components/Screen';
+import { Screen, SCREEN_PADDING_H } from '@/components/Screen';
+import { TAB_BAR_CLEARANCE } from '@/components/tabBar.constants';
 import { Timeline } from '@/components/Timeline';
 import { TimelineRow } from '@/components/TimelineRow';
 import { Viewfinder } from '@/components/Viewfinder';
@@ -48,10 +49,7 @@ const Home = () => {
 
   const monthlyTotal = computeMonthlyTotal(activeSubscriptions);
   const monthlyTotalLabel = formatMoney(monthlyTotal, 'UAH');
-  const yearlySummary = strings.home.yearlySummary(
-    formatMoney(monthlyTotal * 12, 'UAH'),
-    activeSubscriptions.length,
-  );
+  const yearlySummary = strings.home.yearlySummary(formatMoney(monthlyTotal * 12, 'UAH'));
   const nextCharge = rows[0];
 
   const handleScroll = useAnimatedScrollHandler((event) => {
@@ -139,7 +137,7 @@ const Home = () => {
           </View>
 
           <Timeline>
-            {rows.map((row) => (
+            {rows.map((row, index) => (
               <Pressable key={row.id} onPress={() => router.push(`/subscription/${row.id}`)}>
                 <TimelineRow
                   date={row.date}
@@ -151,6 +149,7 @@ const Home = () => {
                   price={row.price}
                   cycle={row.cycle}
                   isScanned={row.isScanned}
+                  isLast={index === rows.length - 1}
                 />
               </Pressable>
             ))}

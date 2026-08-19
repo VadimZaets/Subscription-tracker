@@ -3,9 +3,15 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { subscriptions } from '@/db/schema';
 import { computeNextChargeAt } from '@/lib/billing/nextCharge';
+import { toLocalIsoDate } from '@/lib/format/date';
 import { generateId } from '@/lib/id';
 import { Category } from '@/types/category.types';
-import { BillingCycle, CurrencyCode, SubscriptionStatus } from '@/types/subscription.types';
+import {
+  BillingCycle,
+  CurrencyCode,
+  SubscriptionSource,
+  SubscriptionStatus,
+} from '@/types/subscription.types';
 
 export const listSubscriptions = () => db.select().from(subscriptions);
 
@@ -22,6 +28,7 @@ export type NewSubscriptionInput = {
   currency: CurrencyCode;
   cycle: BillingCycle;
   firstChargeAt: Date;
+  source?: SubscriptionSource;
 };
 
 /** `fxRate` фіксується на 1, бо MVP поки не має живого курсу — мультивалютність
@@ -37,9 +44,9 @@ export const createSubscription = (input: NewSubscriptionInput, now: Date) => {
     currency: input.currency,
     fxRate: 1,
     cycle: input.cycle,
-    nextChargeAt: nextChargeAt.toISOString().slice(0, 10),
+    nextChargeAt: toLocalIsoDate(nextChargeAt),
     status: 'active',
-    source: 'manual',
+    source: input.source ?? 'manual',
     createdAt: now.toISOString(),
   });
 };

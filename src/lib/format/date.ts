@@ -25,6 +25,15 @@ const parseIsoDate = (iso: string): Date => {
   return new Date(year, month - 1, day);
 };
 
+/** Обернена до parseIsoDate: `date.toISOString().slice(0, 10)` конвертує в UTC і в
+ *  східних часових поясах зсуває дату на день назад — тут беремо локальні компоненти. */
+export const toLocalIsoDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 /** Українська плюралізація днів: 1 день / 2-4 дні / 5-20, 25-30... днів, виняток 11-14. */
 const pluralizeDays = (count: number): string => {
   const abs = Math.abs(count);

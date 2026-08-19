@@ -42,16 +42,13 @@ const AddSubscription = () => {
   const [firstChargeAt, setFirstChargeAt] = useState(() => new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [reminderOn, setReminderOn] = useState(true);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const amount = Number(amountText.replace(',', '.'));
   const canSubmit = name.trim().length > 0 && amountText.length > 0 && !Number.isNaN(amount);
 
   const handleClose = useCallback(() => {
     router.back();
-  }, []);
-
-  const handleScanInstead = useCallback(() => {
-    router.replace('/onboarding/scan');
   }, []);
 
   const handleToggleDatePicker = useCallback(() => {
@@ -63,14 +60,19 @@ const AddSubscription = () => {
     if (date) setFirstChargeAt(date);
   }, []);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (!canSubmit) return;
 
-    createSubscription(
-      { name: name.trim(), category, amount, currency: 'UAH', cycle, firstChargeAt },
-      new Date(),
-    );
-    router.back();
+    setSaveError(null);
+    try {
+      await createSubscription(
+        { name: name.trim(), category, amount, currency: 'UAH', cycle, firstChargeAt },
+        new Date(),
+      );
+      router.back();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : String(error));
+    }
   }, [canSubmit, name, category, amount, cycle, firstChargeAt]);
 
   return (
@@ -84,17 +86,6 @@ const AddSubscription = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Pressable onPress={handleScanInstead} style={styles.scanCta}>
-          <View style={styles.scanIcon}>
-            <Ionicons name="camera" size={uScale(17)} color={colors.onAccent} />
-          </View>
-          <View style={styles.scanMid}>
-            <Text style={styles.scanTitle}>{strings.add.scanCtaTitle}</Text>
-            <Text style={styles.scanSub}>{strings.add.scanCtaSub}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={uScale(15)} color={colors.textDim} />
-        </Pressable>
-
         <LabeledInput
           label={strings.add.merchantLabel}
           value={name}
@@ -147,6 +138,7 @@ const AddSubscription = () => {
       </ScrollView>
 
       <View style={styles.bottom}>
+        {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
         <PrimaryButton label={strings.add.submit} onPress={handleSubmit} />
       </View>
     </Screen>
@@ -178,33 +170,6 @@ const makeStyles = (colors: ThemeColors) =>
     closeBtnSpacer: { width: uScale(34) },
     title: { fontFamily: fontFamilies.extraBold, fontSize: uFont(19), color: colors.text },
     scroll: { paddingHorizontal: uScale(SCREEN_PADDING_H), paddingBottom: uScale(24) },
-    scanCta: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: uScale(12),
-      backgroundColor: `${colors.accent}24`,
-      borderWidth: 1,
-      borderColor: `${colors.accent2}4d`,
-      borderRadius: uScale(14),
-      padding: uScale(13),
-      marginBottom: uScale(22),
-    },
-    scanIcon: {
-      width: uScale(34),
-      height: uScale(34),
-      borderRadius: uScale(10),
-      backgroundColor: colors.accent,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    scanMid: { flex: 1 },
-    scanTitle: { fontFamily: fontFamilies.bold, fontSize: uFont(13.5), color: colors.text },
-    scanSub: {
-      fontFamily: fontFamilies.medium,
-      fontSize: uFont(11.5),
-      color: colors.textDim,
-      marginTop: uScale(1),
-    },
     fieldLabel: {
       fontFamily: fontFamilies.bold,
       fontSize: uFont(10.5),
@@ -239,5 +204,12 @@ const makeStyles = (colors: ThemeColors) =>
       paddingHorizontal: uScale(SCREEN_PADDING_H),
       paddingTop: uScale(12),
       paddingBottom: uScale(4),
+    },
+    error: {
+      textAlign: 'center',
+      fontFamily: fontFamilies.semiBold,
+      fontSize: uFont(12.5),
+      color: colors.red,
+      marginBottom: uScale(10),
     },
   });
