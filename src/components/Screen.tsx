@@ -1,19 +1,33 @@
 import { PropsWithChildren, useMemo } from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Edge, SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemeColors, useTheme } from '@/theme';
 import { uScale } from '@/utils/uScale';
 
-type ScreenProps = PropsWithChildren<{ style?: ViewStyle }>;
+/** Горизонтальний відступ екрана. Екрани зі ScrollView кладуть його у
+ *  contentContainerStyle (а не на контейнер), щоб скролбар лишався біля краю. */
+export const SCREEN_PADDING_H = 20;
 
-export const Screen = ({ children, style }: ScreenProps) => {
+/** Плаваючий таб-бар: bottom 18 + height 70 + зазор 12. */
+export const TAB_BAR_CLEARANCE = 100;
+
+type ScreenProps = PropsWithChildren<{
+  style?: ViewStyle;
+  /** false — контейнер без горизонтальних паддінгів (для повноширинного ScrollView). */
+  padded?: boolean;
+  edges?: readonly Edge[];
+}>;
+
+const DEFAULT_EDGES: readonly Edge[] = ['top', 'bottom'];
+
+export const Screen = ({ children, style, padded = true, edges = DEFAULT_EDGES }: ScreenProps) => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <View style={[styles.container, style]}>{children}</View>
+    <SafeAreaView style={styles.safe} edges={edges}>
+      <View style={[styles.container, padded && styles.padded, style]}>{children}</View>
     </SafeAreaView>
   );
 };
@@ -21,5 +35,6 @@ export const Screen = ({ children, style }: ScreenProps) => {
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.bg },
-    container: { flex: 1, backgroundColor: colors.bg, paddingHorizontal: uScale(20) },
+    container: { flex: 1, backgroundColor: colors.bg },
+    padded: { paddingHorizontal: uScale(SCREEN_PADDING_H) },
   });

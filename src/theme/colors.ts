@@ -12,6 +12,12 @@ export type ThemeColors = {
   good: string;
   gold: string;
   red: string;
+  /** Текст/іконки поверх градієнтного/акцентного фону — не частина dark-палітри як така. */
+  onAccent: string;
+  onAccentDim: string;
+  onAccentGlass: string;
+  scrim: string;
+  transparent: string;
 };
 
 // Поки єдина тема (dark) — весь дизайн-макет побудований під неї.
@@ -30,4 +36,9 @@ export const darkColors: ThemeColors = {
   good: '#3ED598',
   gold: '#DCB85C',
   red: '#FD402C',
+  onAccent: '#FFFFFF',
+  onAccentDim: 'rgba(255,255,255,.85)',
+  onAccentGlass: 'rgba(255,255,255,.18)',
+  scrim: 'rgba(0,0,0,.55)',
+  transparent: 'transparent',
 };

@@ -7,6 +7,8 @@ import { StyleSheet } from 'react-native';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
 import { uScale } from '@/utils/uScale';
 
+const BAR_HEIGHT = 70;
+
 const TabsLayout = () => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -21,6 +23,7 @@ const TabsLayout = () => {
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.bar,
+        tabBarItemStyle: styles.item,
         tabBarActiveTintColor: colors.text,
         tabBarInactiveTintColor: colors.textFaint,
         tabBarLabelStyle: styles.label,
@@ -31,8 +34,8 @@ const TabsLayout = () => {
         name="home"
         options={{
           title: 'Дім',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="home-outline" size={uScale(20)} color={color} />
           ),
         }}
       />
@@ -42,9 +45,10 @@ const TabsLayout = () => {
           title: '',
           tabBarIcon: () => (
             <LinearGradient colors={[colors.accent, colors.accent2]} style={styles.bubble}>
-              <Ionicons name="add" size={22} color="#fff" />
+              <Ionicons name="add" size={uScale(22)} color={colors.onAccent} />
             </LinearGradient>
           ),
+          tabBarIconStyle: styles.bubbleIcon,
         }}
         listeners={{ tabPress: handleAddTabPress }}
       />
@@ -52,8 +56,8 @@ const TabsLayout = () => {
         name="settings"
         options={{
           title: 'Налашт.',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="settings-outline" size={uScale(20)} color={color} />
           ),
         }}
       />
@@ -70,20 +74,27 @@ const makeStyles = (colors: ThemeColors) =>
       left: uScale(16),
       right: uScale(16),
       bottom: uScale(18),
-      height: uScale(70),
+      height: uScale(BAR_HEIGHT),
       borderRadius: uScale(100),
       backgroundColor: colors.tabBarBg,
       borderTopWidth: 0,
       borderWidth: 1,
       borderColor: colors.borderGlass,
+      paddingHorizontal: uScale(14),
+      // Навігатор інакше додає safe-area інсет знизу і зсуває вміст угору —
+      // бар плаваючий, інсет уже враховано через bottom.
+      paddingTop: 0,
+      paddingBottom: 0,
     },
-    label: { fontFamily: fontFamilies.bold, fontSize: uScale(10) },
+    item: { height: uScale(BAR_HEIGHT), paddingVertical: uScale(12) },
+    label: { fontFamily: fontFamilies.bold, fontSize: uScale(10), marginTop: uScale(2) },
+    bubbleIcon: { flex: 0 },
     bubble: {
       width: uScale(52),
       height: uScale(52),
       borderRadius: uScale(26),
       alignItems: 'center',
       justifyContent: 'center',
-      transform: [{ translateY: uScale(-16) }],
+      transform: [{ translateY: uScale(-14) }],
     },
   });

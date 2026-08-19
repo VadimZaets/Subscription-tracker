@@ -1,9 +1,11 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { ApertureIcon } from '@/components/ApertureIcon';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
-import { uFont } from '@/utils/uScale';
+import { uFont, uScale } from '@/utils/uScale';
 
 // TODO(Крок 5): реальна перевірка — чи це перший запуск (AsyncStorage flag).
 // Поки що завжди веде на онбординг.
@@ -19,11 +21,17 @@ const Splash = () => {
   }, []);
 
   return (
-    <View style={styles.center}>
-      <Text style={styles.word}>
-        Sn<Text style={styles.accent}>◎</Text>psy
-      </Text>
-    </View>
+    <LinearGradient colors={['#0B1220', '#0A0E1A', '#05070D']} style={styles.gradient}>
+      <View style={styles.center}>
+        <View style={styles.wordRow}>
+          <Text style={styles.word}>Sn</Text>
+          <View style={styles.glyph}>
+            <ApertureIcon size={uScale(34)} color={colors.text} />
+          </View>
+          <Text style={styles.word}>psy</Text>
+        </View>
+      </View>
+    </LinearGradient>
   );
 };
 
@@ -31,7 +39,13 @@ export default Splash;
 
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    center: { flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' },
-    word: { fontFamily: fontFamilies.extraBold, fontSize: uFont(40), color: colors.text },
-    accent: { color: colors.accent2 },
+    gradient: { flex: 1 },
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    wordRow: { flexDirection: 'row', alignItems: 'center' },
+    word: {
+      fontFamily: fontFamilies.extraBold,
+      fontSize: uFont(44),
+      color: colors.text,
+    },
+    glyph: { marginHorizontal: uScale(2), transform: [{ translateY: uScale(3) }] },
   });
