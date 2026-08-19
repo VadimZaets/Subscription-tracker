@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useLiveQuery } from 'drizzle-orm/expo-sqlite/query';
+import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -14,8 +16,11 @@ import { Screen, SCREEN_PADDING_H, TAB_BAR_CLEARANCE } from '@/components/Screen
 import { Timeline } from '@/components/Timeline';
 import { TimelineRow } from '@/components/TimelineRow';
 import { Viewfinder } from '@/components/Viewfinder';
+import { listSubscriptions } from '@/db/queries/subscriptions';
+import { formatMoney } from '@/lib/format/money';
+import { computeMonthlyTotal } from '@/lib/viewModels/monthlyTotal';
+import { toTimelineRowVM } from '@/lib/viewModels/subscriptionRow';
 import { strings } from '@/localization/strings';
-import { mockTimeline } from '@/mocks/subscriptions';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
 import { uFont, uScale } from '@/utils/uScale';
 
@@ -27,15 +32,27 @@ const COMPACT_BAR_HEIGHT = 54;
 /** uScale — звичайна JS-функція, з worklet-а її звати не можна.
  *  Рахуємо один раз тут, у worklet потрапляє вже готове число. */
 const COMPACT_BAR_HEIGHT_PX = uScale(COMPACT_BAR_HEIGHT);
-const MONTHLY_TOTAL = '3 480 ₴';
 
-// TODO(Крок 2): дані з SQLite (listSubscriptions()) замість mockTimeline.
 const Home = () => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const reducedMotion = useReducedMotion();
   const scrollY = useSharedValue(0);
-  const nextCharge = mockTimeline[0];
+  const now = new Date();
+
+  const { data: subscriptions } = useLiveQuery(listSubscriptions());
+  const activeSubscriptions = subscriptions
+    .filter((sub) => sub.status === 'active')
+    .sort((a, b) => a.nextChargeAt.localeCompare(b.nextChargeAt));
+  const rows = activeSubscriptions.map((sub) => toTimelineRowVM(sub, now));
+
+  const monthlyTotal = computeMonthlyTotal(activeSubscriptions);
+  const monthlyTotalLabel = formatMoney(monthlyTotal, 'UAH');
+  const yearlySummary = strings.home.yearlySummary(
+    formatMoney(monthlyTotal * 12, 'UAH'),
+    activeSubscriptions.length,
+  );
+  const nextCharge = rows[0];
 
   const handleScroll = useAnimatedScrollHandler((event) => {
     scrollY.value = event.contentOffset.y;
@@ -102,45 +119,50 @@ const Home = () => {
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
-          <Animated.View style={heroStyle}>
-            <Viewfinder
-              label={strings.home.thisMonth}
-              amount={MONTHLY_TOTAL}
-              sub="≈ 41 760 ₴ на рік · 9 активних"
-              nextChargeName={nextCharge.name}
-              nextChargeWhen={nextCharge.when}
-            />
-          </Animated.View>
+          {nextCharge ? (
+            <Animated.View style={heroStyle}>
+              <Viewfinder
+                label={strings.home.thisMonth}
+                amount={monthlyTotalLabel}
+                sub={yearlySummary}
+                nextChargeName={nextCharge.name}
+                nextChargeWhen={nextCharge.when}
+              />
+            </Animated.View>
+          ) : (
+            <Text style={styles.emptyTitle}>{strings.home.emptyTitle}</Text>
+          )}
 
           <View style={styles.sectionHead}>
             <Text style={styles.sectionTitle}>{strings.home.timelineTitle}</Text>
-            <Text style={styles.sectionLink}>{strings.home.timelineLink}</Text>
+            <Text style={styles.sectionLink}>{strings.home.timelineCount(rows.length)}</Text>
           </View>
 
           <Timeline>
-            {mockTimeline.map((item) => (
-              <TimelineRow
-                key={item.id}
-                date={item.date}
-                when={item.when}
-                name={item.name}
-                category={item.category}
-                categoryLabel={strings.categories[item.category]}
-                categoryColor={item.categoryColor}
-                price={item.price}
-                cycle={item.cycle}
-                isScanned={item.isScanned}
-              />
+            {rows.map((row) => (
+              <Pressable key={row.id} onPress={() => router.push(`/subscription/${row.id}`)}>
+                <TimelineRow
+                  date={row.date}
+                  when={row.when}
+                  name={row.name}
+                  category={row.category}
+                  categoryLabel={strings.categories[row.category]}
+                  categoryColor={row.categoryColor}
+                  price={row.price}
+                  cycle={row.cycle}
+                  isScanned={row.isScanned}
+                />
+              </Pressable>
             ))}
           </Timeline>
         </Animated.ScrollView>
 
         <Animated.View style={[styles.compactBar, compactStyle]} pointerEvents="none">
           <Text style={styles.compactLabel}>{strings.home.thisMonth}</Text>
-          <Text style={styles.compactAmount}>{MONTHLY_TOTAL}</Text>
+          <Text style={styles.compactAmount}>{monthlyTotalLabel}</Text>
           <View style={styles.compactDivider} />
           <Text style={styles.compactNext} numberOfLines={1}>
-            {nextCharge.name} — {nextCharge.when}
+            {nextCharge ? `${nextCharge.name} — ${nextCharge.when}` : ''}
           </Text>
         </Animated.View>
       </View>
@@ -244,4 +266,11 @@ const makeStyles = (colors: ThemeColors) =>
     },
     sectionTitle: { fontFamily: fontFamilies.extraBold, fontSize: uFont(16), color: colors.text },
     sectionLink: { fontFamily: fontFamilies.bold, fontSize: uFont(12.5), color: colors.accent2 },
+    emptyTitle: {
+      fontFamily: fontFamilies.semiBold,
+      fontSize: uFont(14),
+      color: colors.textDim,
+      textAlign: 'center',
+      paddingVertical: uScale(30),
+    },
   });

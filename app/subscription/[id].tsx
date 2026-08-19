@@ -1,28 +1,59 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { useLiveQuery } from 'drizzle-orm/expo-sqlite/query';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { CategoryBadge } from '@/components/CategoryBadge';
 import { Screen, SCREEN_PADDING_H } from '@/components/Screen';
+import { getSubscriptionById, updateSubscriptionStatus } from '@/db/queries/subscriptions';
+import { openSubscriptionSettings } from '@/lib/appStore';
+import { formatCycleAdverb } from '@/lib/format/cycle';
+import { formatShortDate, formatWhen } from '@/lib/format/date';
+import { formatMoney } from '@/lib/format/money';
 import { strings } from '@/localization/strings';
-import { fontFamilies, ThemeColors, useTheme } from '@/theme';
+import { findMerchant } from '@/ocr/merchants.catalog';
+import { categoryColors, fontFamilies, ThemeColors, useTheme } from '@/theme';
 import { uFont, uScale } from '@/utils/uScale';
 
-const MOCK_PAYMENTS = [
-  { date: '21 липня 2026', amount: '379 ₴' },
-  { date: '21 червня 2026', amount: '379 ₴' },
-  { date: '21 травня 2026', amount: '349 ₴' },
-];
-
-// TODO(Крок 3): реальні дані з SQLite за id, дії Скасувати/Пауза пишуть у БД.
 const SubscriptionDetail = () => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { data: rows } = useLiveQuery(getSubscriptionById(id));
+  const sub = rows[0];
 
   const handleBack = useCallback(() => {
     router.back();
   }, []);
+
+  const handleCancel = useCallback(() => {
+    if (!sub) return;
+    updateSubscriptionStatus(sub.id, 'cancelled');
+    openSubscriptionSettings();
+  }, [sub]);
+
+  const handlePause = useCallback(() => {
+    if (!sub) return;
+    updateSubscriptionStatus(sub.id, sub.status === 'paused' ? 'active' : 'paused');
+  }, [sub]);
+
+  if (!sub) {
+    return (
+      <Screen padded={false} style={styles.pad}>
+        <View style={styles.topbar}>
+          <Pressable onPress={handleBack} style={styles.navBtn}>
+            <Ionicons name="chevron-back" size={uScale(16)} color={colors.text} />
+          </Pressable>
+        </View>
+        <Text style={styles.notFound}>{strings.subscriptionDetail.notFound}</Text>
+      </Screen>
+    );
+  }
+
+  const merchant = findMerchant(sub.name);
+  const categoryColor = merchant?.color ?? categoryColors[sub.category];
+  const now = new Date();
 
   return (
     <Screen padded={false} style={styles.pad}>
@@ -30,57 +61,51 @@ const SubscriptionDetail = () => {
         <Pressable onPress={handleBack} style={styles.navBtn}>
           <Ionicons name="chevron-back" size={uScale(16)} color={colors.text} />
         </Pressable>
-        <Pressable style={styles.navBtn}>
-          <Ionicons name="pencil-outline" size={uScale(15)} color={colors.text} />
-        </Pressable>
+        <View style={styles.navBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.identity}>
-          <CategoryBadge category="streaming" color="#E44830" size={76} />
-          <Text style={styles.name}>Netflix</Text>
+          <CategoryBadge category={sub.category} color={categoryColor} size={76} />
+          <Text style={styles.name}>{sub.name}</Text>
           <View style={styles.catTag}>
-            <Text style={styles.catTagText}>{strings.categories.streaming}</Text>
+            <Text style={styles.catTagText}>{strings.categories[sub.category]}</Text>
           </View>
         </View>
 
         <View style={styles.priceCard}>
-          <Text style={styles.price}>379 ₴</Text>
-          <Text style={styles.cycle}>щомісяця</Text>
+          <Text style={styles.price}>{formatMoney(sub.amount, sub.currency)}</Text>
+          <Text style={styles.cycle}>{formatCycleAdverb(sub.cycle)}</Text>
           <View style={styles.priceNextRow}>
             <Ionicons name="calendar-outline" size={uScale(14)} color={colors.textDim} />
             <Text style={styles.priceNextText}>
               {strings.subscriptionDetail.nextChargePrefix}
-              <Text style={styles.priceNextBold}>24 серпня · через 6 днів</Text>
+              <Text style={styles.priceNextBold}>
+                {formatShortDate(sub.nextChargeAt)} · {formatWhen(sub.nextChargeAt, now)}
+              </Text>
             </Text>
           </View>
         </View>
 
         <View style={styles.actions}>
-          <View style={[styles.actBtn, styles.actBtnBad]}>
+          <Pressable onPress={handleCancel} style={[styles.actBtn, styles.actBtnBad]}>
             <Ionicons name="close" size={uScale(15)} color={colors.red} />
             <Text style={[styles.actLabel, { color: colors.red }]}>
               {strings.subscriptionDetail.cancel}
             </Text>
-          </View>
-          <View style={[styles.actBtn, styles.actBtnNeutral]}>
+          </Pressable>
+          <Pressable onPress={handlePause} style={[styles.actBtn, styles.actBtnNeutral]}>
             <Ionicons name="pause" size={uScale(15)} color={colors.text} />
-            <Text style={styles.actLabel}>{strings.subscriptionDetail.pause}</Text>
-          </View>
+            <Text style={styles.actLabel}>
+              {sub.status === 'paused'
+                ? strings.subscriptionDetail.resume
+                : strings.subscriptionDetail.pause}
+            </Text>
+          </Pressable>
         </View>
 
         <Text style={styles.sectionTitle}>{strings.subscriptionDetail.historyTitle}</Text>
-        <View style={styles.history}>
-          {MOCK_PAYMENTS.map((payment) => (
-            <View key={payment.date} style={styles.historyRow}>
-              <View style={styles.historyIcon}>
-                <Ionicons name="receipt-outline" size={uScale(14)} color={colors.textDim} />
-              </View>
-              <Text style={styles.historyDate}>{payment.date}</Text>
-              <Text style={styles.historyAmount}>{payment.amount}</Text>
-            </View>
-          ))}
-        </View>
+        <Text style={styles.historyEmpty}>{strings.subscriptionDetail.historyEmpty}</Text>
 
         <Text style={styles.sectionTitle}>{strings.subscriptionDetail.remindersTitle}</Text>
         <View style={styles.reminderRow}>
@@ -114,6 +139,13 @@ const makeStyles = (colors: ThemeColors) =>
       borderColor: colors.borderGlass,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    notFound: {
+      textAlign: 'center',
+      marginTop: uScale(60),
+      fontFamily: fontFamilies.semiBold,
+      fontSize: uFont(14),
+      color: colors.textDim,
     },
     scroll: { paddingHorizontal: uScale(SCREEN_PADDING_H), paddingBottom: uScale(24) },
     identity: { alignItems: 'center', paddingVertical: uScale(20), gap: uScale(4) },
@@ -191,35 +223,11 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.text,
       marginBottom: uScale(13),
     },
-    history: { gap: uScale(9), marginBottom: uScale(26) },
-    historyRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: uScale(12),
-      backgroundColor: colors.glass,
-      borderWidth: 1,
-      borderColor: colors.borderGlass,
-      borderRadius: uScale(14),
-      padding: uScale(13),
-    },
-    historyIcon: {
-      width: uScale(30),
-      height: uScale(30),
-      borderRadius: uScale(9),
-      backgroundColor: colors.glassStrong,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    historyDate: {
-      flex: 1,
-      fontFamily: fontFamilies.bold,
-      fontSize: uFont(13.5),
-      color: colors.text,
-    },
-    historyAmount: {
-      fontFamily: fontFamilies.semiBold,
+    historyEmpty: {
+      fontFamily: fontFamilies.medium,
       fontSize: uFont(13),
-      color: colors.textDim,
+      color: colors.textFaint,
+      marginBottom: uScale(26),
     },
     reminderRow: {
       flexDirection: 'row',

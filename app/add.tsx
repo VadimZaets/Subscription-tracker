@@ -1,30 +1,50 @@
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { ChipGroup } from '@/components/form/ChipGroup';
+import { LabeledInput } from '@/components/form/LabeledInput';
+import { PillGroup } from '@/components/form/PillGroup';
+import { ToggleRow } from '@/components/form/ToggleRow';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { Screen, SCREEN_PADDING_H } from '@/components/Screen';
+import { createSubscription } from '@/db/queries/subscriptions';
 import { strings } from '@/localization/strings';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
 import { Category } from '@/types/category.types';
+import { BillingCycle } from '@/types/subscription.types';
 import { uFont, uScale } from '@/utils/uScale';
 
-const CATEGORY_ORDER: Category[] = ['streaming', 'software', 'fitness', 'games', 'cloud', 'other'];
-const CYCLE_OPTIONS: { key: 'weekly' | 'monthly' | 'yearly' | 'once'; label: string }[] = [
-  { key: 'weekly', label: strings.cycles.weekly },
-  { key: 'monthly', label: strings.cycles.monthly },
-  { key: 'yearly', label: strings.cycles.yearly },
-  { key: 'once', label: strings.cycles.once },
-];
+const CATEGORY_OPTIONS = (
+  ['streaming', 'software', 'fitness', 'games', 'cloud', 'other'] as Category[]
+).map((key) => ({ key, label: strings.categories[key] }));
 
-// TODO(Крок 2): createSubscription() у SQLite замість router.back() без збереження.
+const CYCLE_OPTIONS = (['weekly', 'monthly', 'yearly', 'once'] as BillingCycle[]).map((key) => ({
+  key,
+  label: strings.cycles[key],
+}));
+
+const DATE_FORMATTER = new Intl.DateTimeFormat('uk-UA', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+
 const AddSubscription = () => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const [name, setName] = useState('');
   const [category, setCategory] = useState<Category>('streaming');
-  const [cycle, setCycle] = useState<(typeof CYCLE_OPTIONS)[number]['key']>('monthly');
+  const [amountText, setAmountText] = useState('');
+  const [cycle, setCycle] = useState<BillingCycle>('monthly');
+  const [firstChargeAt, setFirstChargeAt] = useState(() => new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [reminderOn, setReminderOn] = useState(true);
+
+  const amount = Number(amountText.replace(',', '.'));
+  const canSubmit = name.trim().length > 0 && amountText.length > 0 && !Number.isNaN(amount);
 
   const handleClose = useCallback(() => {
     router.back();
@@ -33,6 +53,25 @@ const AddSubscription = () => {
   const handleScanInstead = useCallback(() => {
     router.replace('/onboarding/scan');
   }, []);
+
+  const handleToggleDatePicker = useCallback(() => {
+    setShowDatePicker((visible) => !visible);
+  }, []);
+
+  const handleDateChange = useCallback((_event: unknown, date?: Date) => {
+    setShowDatePicker(false);
+    if (date) setFirstChargeAt(date);
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    if (!canSubmit) return;
+
+    createSubscription(
+      { name: name.trim(), category, amount, currency: 'UAH', cycle, firstChargeAt },
+      new Date(),
+    );
+    router.back();
+  }, [canSubmit, name, category, amount, cycle, firstChargeAt]);
 
   return (
     <Screen padded={false} style={styles.pad}>
@@ -47,7 +86,7 @@ const AddSubscription = () => {
       <ScrollView contentContainerStyle={styles.scroll}>
         <Pressable onPress={handleScanInstead} style={styles.scanCta}>
           <View style={styles.scanIcon}>
-            <Ionicons name="camera" size={uScale(17)} color="#fff" />
+            <Ionicons name="camera" size={uScale(17)} color={colors.onAccent} />
           </View>
           <View style={styles.scanMid}>
             <Text style={styles.scanTitle}>{strings.add.scanCtaTitle}</Text>
@@ -56,78 +95,59 @@ const AddSubscription = () => {
           <Ionicons name="chevron-forward" size={uScale(15)} color={colors.textDim} />
         </Pressable>
 
-        <Text style={styles.fieldLabel}>{strings.add.merchantLabel}</Text>
-        <TextInput
+        <LabeledInput
+          label={strings.add.merchantLabel}
+          value={name}
+          onChangeText={setName}
           placeholder="Netflix"
-          placeholderTextColor={colors.textFaint}
-          style={styles.input}
         />
 
-        <Text style={styles.fieldLabel}>{strings.add.categoryLabel}</Text>
-        <View style={styles.chips}>
-          {CATEGORY_ORDER.map((cat) => (
-            <Pressable
-              key={cat}
-              onPress={() => setCategory(cat)}
-              style={[styles.chip, category === cat && styles.chipOn]}
-            >
-              <Text style={[styles.chipText, category === cat && styles.chipTextOn]}>
-                {strings.categories[cat]}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        <ChipGroup
+          label={strings.add.categoryLabel}
+          options={CATEGORY_OPTIONS}
+          value={category}
+          onChange={setCategory}
+        />
 
-        <Text style={styles.fieldLabel}>{strings.add.amountLabel}</Text>
-        <View style={styles.amountRow}>
-          <TextInput
-            placeholder="0,00"
-            placeholderTextColor={colors.textFaint}
-            keyboardType="decimal-pad"
-            style={styles.amountInput}
-          />
-          <View style={styles.currencyPick}>
-            <Text style={styles.currencyText}>₴</Text>
-            <Ionicons name="chevron-down" size={uScale(11)} color={colors.textDim} />
-          </View>
-        </View>
+        <LabeledInput
+          label={strings.add.amountLabel}
+          value={amountText}
+          onChangeText={setAmountText}
+          placeholder="0,00"
+          keyboardType="decimal-pad"
+          rightAdornment={
+            <View style={styles.currencyPick}>
+              <Text style={styles.currencyText}>₴</Text>
+            </View>
+          }
+        />
 
-        <Text style={styles.fieldLabel}>{strings.add.cycleLabel}</Text>
-        <View style={styles.cyclePills}>
-          {CYCLE_OPTIONS.map((option) => (
-            <Pressable
-              key={option.key}
-              onPress={() => setCycle(option.key)}
-              style={[styles.pill, cycle === option.key && styles.pillOn]}
-            >
-              <Text style={[styles.pillText, cycle === option.key && styles.pillTextOn]}>
-                {option.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        <PillGroup
+          label={strings.add.cycleLabel}
+          options={CYCLE_OPTIONS}
+          value={cycle}
+          onChange={setCycle}
+        />
 
         <Text style={styles.fieldLabel}>{strings.add.firstChargeLabel}</Text>
-        <View style={styles.dateField}>
+        <Pressable onPress={handleToggleDatePicker} style={styles.dateField}>
           <Ionicons name="calendar-outline" size={uScale(16)} color={colors.textDim} />
-          <Text style={styles.dateText}>21 серпня 2026</Text>
-        </View>
-
-        <Pressable onPress={() => setReminderOn((v) => !v)} style={styles.reminderRow}>
-          <View style={styles.reminderMid}>
-            <Text style={styles.reminderTitle}>{strings.add.reminderTitle}</Text>
-            <Text style={styles.reminderSub}>{strings.add.reminderSub}</Text>
-          </View>
-          <View style={[styles.toggle, reminderOn ? styles.toggleOn : styles.toggleOff]}>
-            <View
-              style={[styles.toggleKnob, reminderOn ? styles.toggleKnobOn : styles.toggleKnobOff]}
-            />
-          </View>
+          <Text style={styles.dateText}>{DATE_FORMATTER.format(firstChargeAt)}</Text>
         </Pressable>
+        {showDatePicker ? (
+          <DateTimePicker value={firstChargeAt} mode="date" onChange={handleDateChange} />
+        ) : null}
+
+        <ToggleRow
+          title={strings.add.reminderTitle}
+          subtitle={strings.add.reminderSub}
+          value={reminderOn}
+          onChange={setReminderOn}
+        />
       </ScrollView>
 
       <View style={styles.bottom}>
-        <PrimaryButton label={strings.add.submit} onPress={handleClose} />
+        <PrimaryButton label={strings.add.submit} onPress={handleSubmit} />
       </View>
     </Screen>
   );
@@ -193,66 +213,16 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.textFaint,
       marginBottom: uScale(8),
     },
-    input: {
-      backgroundColor: colors.glass,
-      borderWidth: 1,
-      borderColor: colors.borderGlass,
-      borderRadius: uScale(14),
-      padding: uScale(14),
-      fontFamily: fontFamilies.bold,
-      fontSize: uFont(14.5),
-      color: colors.text,
-      marginBottom: uScale(22),
-    },
-    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: uScale(8), marginBottom: uScale(22) },
-    chip: {
-      paddingHorizontal: uScale(14),
-      paddingVertical: uScale(9),
-      borderRadius: uScale(100),
-      borderWidth: 1,
-      borderColor: colors.borderGlass,
-      backgroundColor: colors.glass,
-    },
-    chipOn: { backgroundColor: colors.accent, borderColor: colors.accent },
-    chipText: { fontFamily: fontFamilies.bold, fontSize: uFont(13), color: colors.textDim },
-    chipTextOn: { color: colors.onAccent },
-    amountRow: { flexDirection: 'row', gap: uScale(10), marginBottom: uScale(22) },
-    amountInput: {
-      flex: 1,
-      backgroundColor: colors.glass,
-      borderWidth: 1,
-      borderColor: colors.borderGlass,
-      borderRadius: uScale(14),
-      padding: uScale(14),
-      fontFamily: fontFamilies.bold,
-      fontSize: uFont(20),
-      color: colors.text,
-    },
     currencyPick: {
-      width: uScale(64),
-      flexDirection: 'row',
+      width: uScale(50),
       alignItems: 'center',
       justifyContent: 'center',
-      gap: uScale(4),
       backgroundColor: colors.glass,
       borderWidth: 1,
       borderColor: colors.borderGlass,
       borderRadius: uScale(14),
     },
     currencyText: { fontFamily: fontFamilies.bold, fontSize: uFont(14), color: colors.text },
-    cyclePills: { flexDirection: 'row', gap: uScale(8), marginBottom: uScale(22) },
-    pill: {
-      flex: 1,
-      alignItems: 'center',
-      paddingVertical: uScale(11),
-      borderRadius: uScale(10),
-      borderWidth: 1,
-      borderColor: colors.borderGlass,
-      backgroundColor: colors.glass,
-    },
-    pillOn: { backgroundColor: colors.accent, borderColor: colors.accent },
-    pillText: { fontFamily: fontFamilies.bold, fontSize: uFont(12.5), color: colors.textDim },
-    pillTextOn: { color: colors.onAccent },
     dateField: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -265,39 +235,6 @@ const makeStyles = (colors: ThemeColors) =>
       marginBottom: uScale(22),
     },
     dateText: { fontFamily: fontFamilies.bold, fontSize: uFont(14.5), color: colors.text },
-    reminderRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.glass,
-      borderWidth: 1,
-      borderColor: colors.borderGlass,
-      borderRadius: uScale(14),
-      padding: uScale(14),
-    },
-    reminderMid: { flex: 1 },
-    reminderTitle: { fontFamily: fontFamilies.bold, fontSize: uFont(14.5), color: colors.text },
-    reminderSub: {
-      fontFamily: fontFamilies.medium,
-      fontSize: uFont(11.5),
-      color: colors.textFaint,
-      marginTop: uScale(2),
-    },
-    toggle: {
-      width: uScale(40),
-      height: uScale(24),
-      borderRadius: uScale(12),
-      justifyContent: 'center',
-    },
-    toggleOn: { backgroundColor: colors.accent2 },
-    toggleOff: { backgroundColor: colors.glassStrong },
-    toggleKnob: {
-      width: uScale(20),
-      height: uScale(20),
-      borderRadius: uScale(10),
-      backgroundColor: colors.onAccent,
-    },
-    toggleKnobOn: { alignSelf: 'flex-end', marginRight: uScale(2) },
-    toggleKnobOff: { alignSelf: 'flex-start', marginLeft: uScale(2) },
     bottom: {
       paddingHorizontal: uScale(SCREEN_PADDING_H),
       paddingTop: uScale(12),

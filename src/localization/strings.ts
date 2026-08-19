@@ -36,7 +36,10 @@ export const strings = {
     title: 'Твої підписки',
     thisMonth: 'Цього місяця',
     timelineTitle: 'Хронологія списань',
-    timelineLink: '9 усього',
+    timelineCount: (count: number) => `${count} усього`,
+    yearlySummary: (yearlyAmount: string, activeCount: number) =>
+      `≈ ${yearlyAmount} на рік · ${activeCount} активних`,
+    emptyTitle: 'Ще немає підписок',
   },
   settings: {
     title: 'Налаштування',
@@ -114,9 +117,12 @@ export const strings = {
     nextChargePrefix: 'Наступне списання — ',
     cancel: 'Скасувати',
     pause: 'Пауза',
+    resume: 'Відновити',
     historyTitle: 'Історія платежів',
+    historyEmpty: 'Ще немає збережених платежів',
     remindersTitle: 'Нагадування',
     reminderRow: 'За 3 дні до списання',
+    notFound: 'Підписку не знайдено',
   },
   paywall: {
     eyebrow: 'SNAPSY PRO',
