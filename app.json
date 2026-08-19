@@ -7,12 +7,24 @@
     "experiments": {
       "typedRoutes": true
     },
-    "plugins": ["expo-router", "expo-status-bar"],
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Snapsy читає скріншоти й чеки з галереї, щоб розпізнати підписки. Зображення не залишають пристрій.",
+          "cameraPermission": "Snapsy фотографує чеки, щоб розпізнати підписку. Знімки не залишають пристрій.",
+          "microphonePermission": false
+        }
+      ]
+    ],
     "android": {
       "package": "com.anonymous.snapsy"
     },
     "ios": {
-      "bundleIdentifier": "com.anonymous.snapsy"
+      "bundleIdentifier": "com.anonymous.snapsy",
+      "supportsTablet": false
     }
   }
 }
