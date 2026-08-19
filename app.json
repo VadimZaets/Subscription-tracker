@@ -17,7 +17,8 @@
           "cameraPermission": "Snapsy фотографує чеки, щоб розпізнати підписку. Знімки не залишають пристрій.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "android": {
       "package": "com.anonymous.snapsy"

@@ -10,14 +10,16 @@ import {
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
+import { DatabaseProvider } from '@/providers/DatabaseProvider';
 import { useTheme } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
 
 const RootLayout = () => {
   const { colors } = useTheme();
+  const [dbReady, setDbReady] = useState(false);
   const [fontsLoaded, fontError] = useFonts({
     Urbanist_400Regular,
     Urbanist_500Medium,
@@ -27,22 +29,19 @@ const RootLayout = () => {
     Urbanist_900Black,
   });
 
-  const handleLayoutReady = useCallback(async () => {
-    if (fontsLoaded || fontError) {
-      await SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded, fontError]);
+  const handleDbReady = useCallback(() => setDbReady(true), []);
+  const appReady = (fontsLoaded || fontError) && dbReady;
 
   useEffect(() => {
-    handleLayoutReady();
-  }, [handleLayoutReady]);
+    if (appReady) SplashScreen.hideAsync();
+  }, [appReady]);
 
-  if (!fontsLoaded && !fontError) {
-    return null;
+  if (!appReady) {
+    return <DatabaseProvider onReady={handleDbReady}>{null}</DatabaseProvider>;
   }
 
   return (
-    <>
+    <DatabaseProvider onReady={handleDbReady}>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -59,7 +58,7 @@ const RootLayout = () => {
         <Stack.Screen name="subscription/[id]" />
         <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
       </Stack>
-    </>
+    </DatabaseProvider>
   );
 };
 

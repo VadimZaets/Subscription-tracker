@@ -8,5 +8,6 @@ const config = getDefaultConfig(__dirname);
 config.resolver.alias = {
   '@': path.resolve(__dirname, 'src'),
 };
+config.resolver.sourceExts.push('sql');
 
 module.exports = config;
