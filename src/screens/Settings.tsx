@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
 import { useCallback, useMemo } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -8,6 +7,7 @@ import { Screen, SCREEN_PADDING_H } from '@/components/Screen';
 import { TAB_BAR_CLEARANCE } from '@/components/tabBar.constants';
 import { resetDatabase } from '@/db/queries/reset';
 import { strings } from '@/localization/strings';
+import { TabScreenProps } from '@/navigation/types';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
 import { uFont, uScale } from '@/utils/uScale';
 
@@ -20,13 +20,13 @@ type Row = {
   onPress?: () => void;
 };
 
-const Settings = () => {
+export const Settings = ({ navigation }: TabScreenProps<'settings'>) => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const handleOpenPaywall = useCallback(() => {
-    router.push('/paywall');
-  }, []);
+    navigation.navigate('Paywall');
+  }, [navigation]);
 
   const handleResetData = useCallback(() => {
     Alert.alert(strings.settings.deleteAllConfirmTitle, strings.settings.deleteAllConfirmMessage, [
@@ -141,8 +141,6 @@ const Settings = () => {
     </Screen>
   );
 };
-
-export default Settings;
 
 const TAB_SCREEN_EDGES = ['top'] as const;
 

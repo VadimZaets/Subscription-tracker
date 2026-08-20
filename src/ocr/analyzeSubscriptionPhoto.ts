@@ -37,16 +37,24 @@ const asChargedAt = (value: unknown): Date | null => {
   return str && DATE_RE.test(str) ? parseIsoDate(str) : null;
 };
 
+const toAnalyzedSubscription = (item: Record<string, unknown>): AnalyzedSubscription => ({
+  merchantName: asStringOrNull(item.merchantName) ?? '',
+  amount: typeof item.amount === 'number' ? item.amount : 0,
+  currency: asCurrency(item.currency),
+  cycle: asCycle(item.cycle),
+  chargedAt: asChargedAt(item.chargedAtDate),
+  confidence: item.confidence === 'high' ? 'high' : 'low',
+});
+
 /**
- * Повне AI-розпізнавання фото підписки: шле фото (не текст) на селфгостед-сервіс
- * (Subscription-tracker-ocr), який питає Groq. Домен свідомо НЕ входить у цю
- * відповідь — його питаємо окремим текстовим запитом (lookupMerchantDomain)
- * лише після того, як користувач підтвердить ім'я мерчанта, бо тут воно ще
- * може бути неточним. Основний шлях для одиночного фото в confirm.tsx (усе,
- * крім скріншота App Store з кількома підписками — той лишається на
- * детермінованому parseAppStoreScreenshot).
+ * Повне AI-розпізнавання фото підписки/підписок: шле фото (не текст) на
+ * селфгостед-сервіс (Subscription-tracker-ocr), який питає Groq. Повертає
+ * масив — один елемент для звичайного чека, кілька для скріншота
+ * "Підписки" App/Play Store. Домен свідомо НЕ входить у цю відповідь — його
+ * питаємо окремим текстовим запитом (lookupMerchantDomain) лише після того,
+ * як користувач підтвердить ім'я мерчанта, бо тут воно ще може бути неточним.
  */
-export const analyzeSubscriptionPhoto = async (uri: string): Promise<AnalyzedSubscription> => {
+export const analyzeSubscriptionPhoto = async (uri: string): Promise<AnalyzedSubscription[]> => {
   const base64 = await readAsStringAsync(uri, { encoding: EncodingType.Base64 });
 
   const response = await fetch(`${SELFHOSTED_OCR_URL}/subscription/analyze`, {
@@ -64,12 +72,6 @@ export const analyzeSubscriptionPhoto = async (uri: string): Promise<AnalyzedSub
   const data = await response.json();
   console.log('[analyzeSubscriptionPhoto] raw response:', JSON.stringify(data, null, 2));
 
-  return {
-    merchantName: asStringOrNull(data.merchantName) ?? '',
-    amount: typeof data.amount === 'number' ? data.amount : 0,
-    currency: asCurrency(data.currency),
-    cycle: asCycle(data.cycle),
-    chargedAt: asChargedAt(data.chargedAtDate),
-    confidence: data.confidence === 'high' ? 'high' : 'low',
-  };
+  const subscriptions: unknown = Array.isArray(data.subscriptions) ? data.subscriptions : [];
+  return (subscriptions as Record<string, unknown>[]).map(toAnalyzedSubscription);
 };

@@ -1,17 +1,27 @@
-import { Tabs } from 'expo-router';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useCallback, useState } from 'react';
 
 import { AddActionOverlay } from '@/components/AddActionOverlay';
 import { SnapsyTabBar } from '@/components/SnapsyTabBar';
+import { Home } from '@/screens/Home';
+import { Settings } from '@/screens/Settings';
 
-const TabsLayout = () => {
+import { TabParamList } from './types';
+
+const Tab = createBottomTabNavigator<TabParamList>();
+
+/** Порожній екран — тап на нього перехоплюється кастомним таб-баром
+ *  (`SnapsyTabBar`), який відкриває `AddActionOverlay` замість навігації. */
+const AddActionPlaceholder = () => null;
+
+export const TabNavigator = () => {
   const [actionOpen, setActionOpen] = useState(false);
 
   const handleToggleAction = useCallback(() => setActionOpen((open) => !open), []);
   const handleCloseAction = useCallback(() => setActionOpen(false), []);
 
   return (
-    <Tabs
+    <Tab.Navigator
       screenOptions={{ headerShown: false }}
       // Оверлей іде ПЕРЕД баром у тому самому дереві — тому бар (і кнопка «+»)
       // малюється поверх розмиття, без окремої модалки й без копії кнопки.
@@ -22,11 +32,9 @@ const TabsLayout = () => {
         </>
       )}
     >
-      <Tabs.Screen name="home" options={{ title: 'Дім' }} />
-      <Tabs.Screen name="add-action" options={{ title: '' }} />
-      <Tabs.Screen name="settings" options={{ title: 'Налашт.' }} />
-    </Tabs>
+      <Tab.Screen name="home" component={Home} options={{ title: 'Дім' }} />
+      <Tab.Screen name="add-action" component={AddActionPlaceholder} options={{ title: '' }} />
+      <Tab.Screen name="settings" component={Settings} options={{ title: 'Налашт.' }} />
+    </Tab.Navigator>
   );
 };
-
-export default TabsLayout;

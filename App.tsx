@@ -7,17 +7,35 @@ import {
   Urbanist_900Black,
   useFonts,
 } from '@expo-google-fonts/urbanist';
-import { Stack } from 'expo-router';
+import { LinkingOptions, NavigationContainer } from '@react-navigation/native';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { RootNavigator } from '@/navigation/RootNavigator';
+import { RootStackParamList } from '@/navigation/types';
 import { DatabaseProvider } from '@/providers/DatabaseProvider';
 import { useTheme } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
 
-const RootLayout = () => {
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: ['snapsy://'],
+  config: {
+    screens: {
+      Splash: '',
+      Tabs: { screens: { home: 'home', 'add-action': 'add-action', settings: 'settings' } },
+      Add: 'add',
+      Confirm: 'confirm',
+      SubscriptionDetail: 'subscription/:id',
+      Paywall: 'paywall',
+      DevOcrSpike: 'dev/ocr',
+    },
+  },
+};
+
+const App = () => {
   const { colors } = useTheme();
   const [dbReady, setDbReady] = useState(false);
   const [fontsLoaded, fontError] = useFonts({
@@ -41,25 +59,15 @@ const RootLayout = () => {
   }
 
   return (
-    <DatabaseProvider onReady={handleDbReady}>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.bg },
-        }}
-      >
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="onboarding/promise" />
-        <Stack.Screen name="onboarding/scan" />
-        <Stack.Screen name="onboarding/result" />
-        <Stack.Screen name="add" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="confirm" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="subscription/[id]" />
-        <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
-      </Stack>
-    </DatabaseProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <DatabaseProvider onReady={handleDbReady}>
+        <StatusBar style="light" />
+        <NavigationContainer linking={linking}>
+          <RootNavigator />
+        </NavigationContainer>
+      </DatabaseProvider>
+    </GestureHandlerRootView>
   );
 };
 
-export default RootLayout;
+export default App;

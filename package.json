@@ -1,12 +1,15 @@
 {
   "name": "snapsy",
   "version": "1.0.0",
-  "main": "expo-router/entry",
+  "main": "node_modules/expo/AppEntry.js",
   "dependencies": {
     "@dariyd/react-native-text-recognition": "^2.0.20",
     "@expo-google-fonts/urbanist": "^0.4.2",
     "@expo/vector-icons": "^15.0.2",
     "@react-native-community/datetimepicker": "9.1.0",
+    "@react-navigation/bottom-tabs": "^7.18.17",
+    "@react-navigation/native": "^7.3.17",
+    "@react-navigation/native-stack": "^7.18.9",
     "@types/react": "~19.2.4",
     "drizzle-orm": "^0.45.2",
     "expo": "~57.0.14",
@@ -17,12 +20,12 @@
     "expo-image-picker": "~57.0.11",
     "expo-linear-gradient": "~57.0.1",
     "expo-linking": "~57.0.6",
-    "expo-router": "~57.0.14",
     "expo-splash-screen": "~57.0.7",
     "expo-sqlite": "~57.0.1",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-native": "0.86.2",
+    "react-native-gesture-handler": "~2.32.0",
     "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
@@ -79,6 +82,7 @@
     "knip": "^6.32.2",
     "lint-staged": "^16.4.0",
     "patch-package": "^8.0.1",
-    "prettier": "^3.9.6"
+    "prettier": "^3.9.6",
+    "react-native-svg-transformer": "^1.5.3"
   }
 }

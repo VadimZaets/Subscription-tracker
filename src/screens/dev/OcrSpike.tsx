@@ -29,7 +29,7 @@ const runOnce = async (uri: string, label: string, languages: string[]): Promise
 };
 
 /** Викидний спайк-екран (Крок 2). Не для продакшена — тільки вимірювання точності OCR. */
-const OcrSpike = () => {
+export const OcrSpike = () => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [uri, setUri] = useState<string | null>(null);
@@ -112,8 +112,6 @@ const OcrSpike = () => {
     </Screen>
   );
 };
-
-export default OcrSpike;
 
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({

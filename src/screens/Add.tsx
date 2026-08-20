@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -12,6 +11,7 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { Screen, SCREEN_PADDING_H } from '@/components/Screen';
 import { createSubscription } from '@/db/queries/subscriptions';
 import { strings } from '@/localization/strings';
+import { RootStackScreenProps } from '@/navigation/types';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
 import { Category } from '@/types/category.types';
 import { BillingCycle } from '@/types/subscription.types';
@@ -32,7 +32,7 @@ const DATE_FORMATTER = new Intl.DateTimeFormat('uk-UA', {
   year: 'numeric',
 });
 
-const AddSubscription = () => {
+export const Add = ({ navigation }: RootStackScreenProps<'Add'>) => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [name, setName] = useState('');
@@ -48,8 +48,8 @@ const AddSubscription = () => {
   const canSubmit = name.trim().length > 0 && amountText.length > 0 && !Number.isNaN(amount);
 
   const handleClose = useCallback(() => {
-    router.back();
-  }, []);
+    navigation.goBack();
+  }, [navigation]);
 
   const handleToggleDatePicker = useCallback(() => {
     setShowDatePicker((visible) => !visible);
@@ -69,11 +69,11 @@ const AddSubscription = () => {
         { name: name.trim(), category, amount, currency: 'UAH', cycle, firstChargeAt },
         new Date(),
       );
-      router.back();
+      navigation.goBack();
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : String(error));
     }
-  }, [canSubmit, name, category, amount, cycle, firstChargeAt]);
+  }, [canSubmit, name, category, amount, cycle, firstChargeAt, navigation]);
 
   return (
     <Screen padded={false} style={styles.pad}>
@@ -144,8 +144,6 @@ const AddSubscription = () => {
     </Screen>
   );
 };
-
-export default AddSubscription;
 
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({

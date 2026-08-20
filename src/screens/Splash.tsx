@@ -1,24 +1,23 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ApertureIcon } from '@/components/ApertureIcon';
+import { RootStackScreenProps } from '@/navigation/types';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
 import { uFont, uScale } from '@/utils/uScale';
 
-// TODO(Крок 5): реальна перевірка — чи це перший запуск (AsyncStorage flag).
-// Поки що завжди веде на онбординг.
-const Splash = () => {
+// TODO: онбординг тимчасово прибрано (буде замінений) — Splash веде напряму на таби.
+export const Splash = ({ navigation }: RootStackScreenProps<'Splash'>) => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.replace('/onboarding/promise');
+      navigation.replace('Tabs');
     }, 900);
     return () => clearTimeout(timer);
-  }, []);
+  }, [navigation]);
 
   return (
     <LinearGradient colors={['#0B1220', '#0A0E1A', '#05070D']} style={styles.gradient}>
@@ -34,8 +33,6 @@ const Splash = () => {
     </LinearGradient>
   );
 };
-
-export default Splash;
 
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({

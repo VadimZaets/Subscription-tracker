@@ -4,11 +4,7 @@
     "slug": "snapsy",
     "scheme": "snapsy",
     "version": "1.0.0",
-    "experiments": {
-      "typedRoutes": true
-    },
     "plugins": [
-      "expo-router",
       "expo-status-bar",
       [
         "expo-image-picker",

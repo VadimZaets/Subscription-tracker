@@ -1,10 +1,13 @@
-import { Ionicons } from '@expo/vector-icons';
+import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Tabs } from 'expo-router';
-import { ComponentProps, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { SvgProps } from 'react-native-svg';
 
+import HomeIcon from '@/assets/icon/tabBar/home.svg';
+import PlusIcon from '@/assets/icon/tabBar/plus.svg';
+import SettingsIcon from '@/assets/icon/tabBar/settings.svg';
 import { TAB_BAR_BOTTOM, TAB_BAR_HEIGHT, TAB_BAR_INSET_H } from '@/components/tabBar.constants';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
 import { uScale } from '@/utils/uScale';
@@ -12,14 +15,12 @@ import { uScale } from '@/utils/uScale';
 const ADD_ROUTE = 'add-action';
 const TRANSITION_MS = 220;
 
-const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  home: 'home-outline',
-  settings: 'settings-outline',
+const TAB_ICONS: Record<string, FC<SvgProps>> = {
+  home: HomeIcon,
+  settings: SettingsIcon,
 };
 
-type NavigatorTabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
-
-type SnapsyTabBarProps = NavigatorTabBarProps & {
+type SnapsyTabBarProps = BottomTabBarProps & {
   actionOpen: boolean;
   onToggleAction: () => void;
 };
@@ -75,7 +76,7 @@ export const SnapsyTabBar = ({
                     style={[StyleSheet.absoluteFill, styles.bubbleClosedFace, closedStyle]}
                   />
                   <Animated.View style={plusStyle}>
-                    <Ionicons name="add" size={uScale(22)} color={colors.onAccent} />
+                    <PlusIcon width={uScale(18)} height={uScale(18)} color={colors.onAccent} />
                   </Animated.View>
                 </View>
               </Pressable>
@@ -93,14 +94,18 @@ export const SnapsyTabBar = ({
             if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
           };
 
+          const TabIcon = TAB_ICONS[route.name];
+
           return (
             <Animated.View key={route.key} style={[styles.item, sideItemsStyle]}>
               <Pressable onPress={handlePress} disabled={actionOpen} style={styles.itemPressable}>
-                <Ionicons
-                  name={TAB_ICONS[route.name] ?? 'ellipse-outline'}
-                  size={uScale(20)}
-                  color={focused ? colors.text : colors.textFaint}
-                />
+                {TabIcon ? (
+                  <TabIcon
+                    width={uScale(18)}
+                    height={uScale(18)}
+                    color={focused ? colors.text : colors.textFaint}
+                  />
+                ) : null}
                 <Text style={[styles.label, focused ? styles.labelOn : styles.labelOff]}>
                   {descriptors[route.key].options.title ?? route.name}
                 </Text>

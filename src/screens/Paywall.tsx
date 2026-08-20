@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { Screen, SCREEN_PADDING_H } from '@/components/Screen';
 import { strings } from '@/localization/strings';
+import { RootStackScreenProps } from '@/navigation/types';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
 import { uFont, uScale } from '@/utils/uScale';
 
@@ -17,14 +17,14 @@ const FEATURES = [
 ];
 
 // TODO(Крок 6): RevenueCat — реальні offerings/purchasePackage() замість статики.
-const Paywall = () => {
+export const Paywall = ({ navigation }: RootStackScreenProps<'Paywall'>) => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [plan, setPlan] = useState<'yearly' | 'monthly'>('yearly');
 
   const handleClose = useCallback(() => {
-    router.back();
-  }, []);
+    navigation.goBack();
+  }, [navigation]);
 
   return (
     <Screen padded={false} style={styles.pad}>
@@ -115,8 +115,6 @@ const Paywall = () => {
     </Screen>
   );
 };
-
-export default Paywall;
 
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({

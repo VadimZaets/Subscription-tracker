@@ -1,8 +1,8 @@
-import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BlurView } from 'expo-blur';
 import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
-import { useCallback, useMemo } from 'react';
+import { FC, useCallback, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
@@ -11,9 +11,14 @@ import Animated, {
   FadeOut,
   FadeOutDown,
 } from 'react-native-reanimated';
+import { SvgProps } from 'react-native-svg';
 
+import CameraIcon from '@/assets/icon/action/camera.svg';
+import MagicWandIcon from '@/assets/icon/action/magic-wand.svg';
+import MediaIcon from '@/assets/icon/action/media.svg';
 import { TAB_BAR_CLEARANCE } from '@/components/tabBar.constants';
 import { strings } from '@/localization/strings';
+import { RootStackParamList } from '@/navigation/types';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
 import { uFont, uScale } from '@/utils/uScale';
 
@@ -37,13 +42,14 @@ type AddActionOverlayProps = { visible: boolean; onClose: () => void };
 export const AddActionOverlay = ({ visible, onClose }: AddActionOverlayProps) => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const openConfirm = useCallback(
     (uri: string) => {
       onClose();
-      router.push({ pathname: '/confirm', params: { uri } });
+      navigation.navigate('Confirm', { uri });
     },
-    [onClose],
+    [onClose, navigation],
   );
 
   const handleCamera = useCallback(async () => {
@@ -64,15 +70,15 @@ export const AddActionOverlay = ({ visible, onClose }: AddActionOverlayProps) =>
 
   const handleManual = useCallback(() => {
     onClose();
-    router.push('/add');
-  }, [onClose]);
+    navigation.navigate('Add');
+  }, [onClose, navigation]);
 
   if (!visible) return null;
 
-  const options: { label: string; icon: keyof typeof Ionicons.glyphMap; onPress: () => void }[] = [
-    { label: strings.action.camera, icon: 'camera', onPress: handleCamera },
-    { label: strings.action.gallery, icon: 'images', onPress: handleGallery },
-    { label: strings.action.manual, icon: 'create', onPress: handleManual },
+  const options: { label: string; Icon: FC<SvgProps>; onPress: () => void }[] = [
+    { label: strings.action.camera, Icon: CameraIcon, onPress: handleCamera },
+    { label: strings.action.gallery, Icon: MediaIcon, onPress: handleGallery },
+    { label: strings.action.manual, Icon: MagicWandIcon, onPress: handleManual },
   ];
 
   return (
@@ -96,7 +102,7 @@ export const AddActionOverlay = ({ visible, onClose }: AddActionOverlayProps) =>
             <Pressable onPress={option.onPress} style={styles.option}>
               <Text style={styles.optionLabel}>{option.label}</Text>
               <View style={styles.optionIcon}>
-                <Ionicons name={option.icon} size={uScale(19)} color={colors.text} />
+                <option.Icon width={uScale(19)} height={uScale(19)} color={colors.text} />
               </View>
             </Pressable>
           </Animated.View>

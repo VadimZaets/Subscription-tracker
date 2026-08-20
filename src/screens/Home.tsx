@@ -1,6 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite/query';
-import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -12,6 +10,7 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 
+import NotificationIcon from '@/assets/icon/notification.svg';
 import { Screen, SCREEN_PADDING_H } from '@/components/Screen';
 import { TAB_BAR_CLEARANCE } from '@/components/tabBar.constants';
 import { Timeline } from '@/components/Timeline';
@@ -22,6 +21,7 @@ import { formatMoney } from '@/lib/format/money';
 import { computeMonthlyTotal } from '@/lib/viewModels/monthlyTotal';
 import { toTimelineRowVM } from '@/lib/viewModels/subscriptionRow';
 import { strings } from '@/localization/strings';
+import { TabScreenProps } from '@/navigation/types';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
 import { uFont, uScale } from '@/utils/uScale';
 
@@ -34,7 +34,7 @@ const COMPACT_BAR_HEIGHT = 54;
  *  Рахуємо один раз тут, у worklet потрапляє вже готове число. */
 const COMPACT_BAR_HEIGHT_PX = uScale(COMPACT_BAR_HEIGHT);
 
-const Home = () => {
+export const Home = ({ navigation }: TabScreenProps<'home'>) => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const reducedMotion = useReducedMotion();
@@ -105,7 +105,7 @@ const Home = () => {
           <Text style={styles.title}>{strings.home.title}</Text>
         </View>
         <View style={styles.bell}>
-          <Ionicons name="notifications-outline" size={uScale(18)} color={colors.text} />
+          <NotificationIcon width={uScale(18)} height={uScale(18)} color={colors.text} />
           <View style={styles.bellDot} />
         </View>
       </View>
@@ -136,7 +136,10 @@ const Home = () => {
 
           <Timeline>
             {rows.map((row, index) => (
-              <Pressable key={row.id} onPress={() => router.push(`/subscription/${row.id}`)}>
+              <Pressable
+                key={row.id}
+                onPress={() => navigation.navigate('SubscriptionDetail', { id: row.id })}
+              >
                 <TimelineRow
                   date={row.date}
                   when={row.when}
@@ -147,7 +150,6 @@ const Home = () => {
                   domain={row.domain}
                   price={row.price}
                   cycle={row.cycle}
-                  isScanned={row.isScanned}
                   isLast={index === rows.length - 1}
                 />
               </Pressable>
@@ -163,8 +165,6 @@ const Home = () => {
     </Screen>
   );
 };
-
-export default Home;
 
 const TAB_SCREEN_EDGES = ['top'] as const;
 

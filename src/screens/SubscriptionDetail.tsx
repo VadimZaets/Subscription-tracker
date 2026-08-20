@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite/query';
-import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -12,20 +11,24 @@ import { formatCycleAdverb } from '@/lib/format/cycle';
 import { formatShortDate, formatWhen } from '@/lib/format/date';
 import { formatMoney } from '@/lib/format/money';
 import { strings } from '@/localization/strings';
+import { RootStackScreenProps } from '@/navigation/types';
 import { findMerchant } from '@/ocr/merchants.catalog';
 import { categoryColors, fontFamilies, ThemeColors, useTheme } from '@/theme';
 import { uFont, uScale } from '@/utils/uScale';
 
-const SubscriptionDetail = () => {
+export const SubscriptionDetail = ({
+  route,
+  navigation,
+}: RootStackScreenProps<'SubscriptionDetail'>) => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = route.params;
   const { data: rows } = useLiveQuery(getSubscriptionById(id));
   const sub = rows[0];
 
   const handleBack = useCallback(() => {
-    router.back();
-  }, []);
+    navigation.goBack();
+  }, [navigation]);
 
   const handleCancel = useCallback(() => {
     if (!sub) return;
@@ -126,8 +129,6 @@ const SubscriptionDetail = () => {
     </Screen>
   );
 };
-
-export default SubscriptionDetail;
 
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
