@@ -4,7 +4,13 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useCallback, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeInDown,
+  FadeOut,
+  FadeOutDown,
+} from 'react-native-reanimated';
 
 import { TAB_BAR_CLEARANCE } from '@/components/tabBar.constants';
 import { strings } from '@/localization/strings';
@@ -13,11 +19,16 @@ import { uFont, uScale } from '@/utils/uScale';
 
 const STAGGER_DELAY_MS = 45;
 const RISE_DISTANCE = 56;
+/** Додатковий зазор над бульбашкою «+» — без нього нижній пункт меню з нею стикався. */
+const MENU_EXTRA_GAP = 28;
+const BACKDROP_DURATION_MS = 180;
 
 // Без springify: пружина довго догойдувалась. Тут — виринули й одразу стали.
 const OPTION_ENTERING = FadeInDown.duration(240)
   .easing(Easing.out(Easing.cubic))
   .withInitialValues({ opacity: 0, transform: [{ translateY: uScale(RISE_DISTANCE) }] });
+
+const OPTION_EXITING = FadeOutDown.duration(200).easing(Easing.in(Easing.cubic));
 
 type AddActionOverlayProps = { visible: boolean; onClose: () => void };
 
@@ -63,7 +74,11 @@ export const AddActionOverlay = ({ visible, onClose }: AddActionOverlayProps) =>
   ];
 
   return (
-    <View style={styles.root}>
+    <Animated.View
+      style={styles.root}
+      entering={FadeIn.duration(BACKDROP_DURATION_MS)}
+      exiting={FadeOut.duration(BACKDROP_DURATION_MS)}
+    >
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
         <BlurView intensity={32} tint="dark" style={StyleSheet.absoluteFill} />
         <View style={styles.scrim} />
@@ -74,6 +89,7 @@ export const AddActionOverlay = ({ visible, onClose }: AddActionOverlayProps) =>
           <Animated.View
             key={option.label}
             entering={OPTION_ENTERING.delay(index * STAGGER_DELAY_MS)}
+            exiting={OPTION_EXITING.delay((options.length - 1 - index) * STAGGER_DELAY_MS)}
           >
             <Pressable onPress={option.onPress} style={styles.option}>
               <Text style={styles.optionLabel}>{option.label}</Text>
@@ -84,7 +100,7 @@ export const AddActionOverlay = ({ visible, onClose }: AddActionOverlayProps) =>
           </Animated.View>
         ))}
       </View>
-    </View>
+    </Animated.View>
   );
 };
 
@@ -109,7 +125,7 @@ const makeStyles = (colors: ThemeColors) =>
     menu: {
       alignItems: 'flex-end',
       paddingRight: uScale(24),
-      paddingBottom: uScale(TAB_BAR_CLEARANCE),
+      paddingBottom: uScale(TAB_BAR_CLEARANCE + MENU_EXTRA_GAP),
       gap: uScale(16),
     },
     option: { flexDirection: 'row', alignItems: 'center', gap: uScale(14) },
