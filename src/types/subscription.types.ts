@@ -12,6 +12,8 @@ export type Subscription = {
   id: string;
   name: string;
   category: Category;
+  /** З merchants.catalog.ts або AI-розпізнавання фото — null, якщо жодне не впевнене. */
+  domain: string | null;
   status: SubscriptionStatus;
   source: SubscriptionSource;
   amount: number;

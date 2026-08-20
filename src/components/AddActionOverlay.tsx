@@ -49,14 +49,16 @@ export const AddActionOverlay = ({ visible, onClose }: AddActionOverlayProps) =>
   const handleCamera = useCallback(async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) return;
-    const result = await ImagePicker.launchCameraAsync({ quality: 1 });
+    // Сервер однаково стискає до менших розмірів перед AI — тут головне менший
+    // файл на upload, а на розпізнаваності тексту/лого це майже не позначається.
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.4 });
     if (!result.canceled) openConfirm(result.assets[0].uri);
   }, [openConfirm]);
 
   const handleGallery = useCallback(async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
-    const result = await ImagePicker.launchImageLibraryAsync({ quality: 1 });
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.4 });
     if (!result.canceled) openConfirm(result.assets[0].uri);
   }, [openConfirm]);
 

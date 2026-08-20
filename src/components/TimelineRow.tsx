@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { CategoryBadge } from '@/components/CategoryBadge';
+import { MerchantLogo } from '@/components/MerchantLogo';
 import {
   CONNECTOR_HEIGHT,
   CONNECTOR_LEFT,
@@ -21,6 +21,7 @@ export type TimelineRowProps = {
   category: Category;
   categoryLabel: string;
   categoryColor: string;
+  domain?: string | null;
   price: string;
   cycle: string;
   isScanned?: boolean;
@@ -35,6 +36,7 @@ export const TimelineRow = ({
   category,
   categoryLabel,
   categoryColor,
+  domain,
   price,
   cycle,
   isScanned,
@@ -54,7 +56,7 @@ export const TimelineRow = ({
       <View style={styles.cardWrap}>
         {isLast ? null : <View style={styles.connector} />}
         <View style={styles.card}>
-          <CategoryBadge category={category} color={categoryColor} size={38} />
+          <MerchantLogo domain={domain} category={category} color={categoryColor} size={38} />
           <View style={styles.mid}>
             <View style={styles.nameRow}>
               <Text style={styles.name}>{name}</Text>

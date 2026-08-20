@@ -8,6 +8,13 @@
       "when": 1787150444285,
       "tag": "0000_cold_wilson_fisk",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1787222878301,
+      "tag": "0001_amusing_wraith",
+      "breakpoints": true
     }
   ]
 }

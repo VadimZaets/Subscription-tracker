@@ -9,17 +9,9 @@ type ViewfinderProps = {
   label: string;
   amount: string;
   sub: string;
-  nextChargeName: string;
-  nextChargeWhen: string;
 };
 
-export const Viewfinder = ({
-  label,
-  amount,
-  sub,
-  nextChargeName,
-  nextChargeWhen,
-}: ViewfinderProps) => {
+export const Viewfinder = ({ label, amount, sub }: ViewfinderProps) => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
@@ -33,13 +25,6 @@ export const Viewfinder = ({
       <Text style={styles.label}>{label}</Text>
       <Text style={styles.amount}>{amount}</Text>
       <Text style={styles.sub}>{sub}</Text>
-
-      <View style={styles.nextPill}>
-        <Ionicons name="time-outline" size={uScale(13)} color={colors.textDim} />
-        <Text style={styles.nextText}>
-          <Text style={styles.nextName}>{nextChargeName}</Text> — {nextChargeWhen}
-        </Text>
-      </View>
     </View>
   );
 };

@@ -123,8 +123,6 @@ const Home = () => {
                 label={strings.home.thisMonth}
                 amount={monthlyTotalLabel}
                 sub={yearlySummary}
-                nextChargeName={nextCharge.name}
-                nextChargeWhen={nextCharge.when}
               />
             </Animated.View>
           ) : (
@@ -146,6 +144,7 @@ const Home = () => {
                   category={row.category}
                   categoryLabel={strings.categories[row.category]}
                   categoryColor={row.categoryColor}
+                  domain={row.domain}
                   price={row.price}
                   cycle={row.cycle}
                   isScanned={row.isScanned}
@@ -159,10 +158,6 @@ const Home = () => {
         <Animated.View style={[styles.compactBar, compactStyle]} pointerEvents="none">
           <Text style={styles.compactLabel}>{strings.home.thisMonth}</Text>
           <Text style={styles.compactAmount}>{monthlyTotalLabel}</Text>
-          <View style={styles.compactDivider} />
-          <Text style={styles.compactNext} numberOfLines={1}>
-            {nextCharge ? `${nextCharge.name} — ${nextCharge.when}` : ''}
-          </Text>
         </Animated.View>
       </View>
     </Screen>

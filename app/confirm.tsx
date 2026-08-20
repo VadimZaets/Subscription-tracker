@@ -3,21 +3,22 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { CategoryBadge } from '@/components/CategoryBadge';
 import { LabeledInput } from '@/components/form/LabeledInput';
 import { PillGroup } from '@/components/form/PillGroup';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { Screen, SCREEN_PADDING_H } from '@/components/Screen';
 import { createSubscription } from '@/db/queries/subscriptions';
+import { computeNextChargeAt } from '@/lib/billing/nextCharge';
 import { formatShortDate, toLocalIsoDate } from '@/lib/format/date';
-import { formatMoney } from '@/lib/format/money';
 import { strings } from '@/localization/strings';
+import { analyzeSubscriptionPhoto } from '@/ocr/analyzeSubscriptionPhoto';
+import { lookupMerchantDomain } from '@/ocr/lookupMerchantDomain';
 import { findMerchant } from '@/ocr/merchants.catalog';
-import { parseAppStoreScreenshot, ParsedAppStoreSubscription } from '@/ocr/parseAppStoreScreenshot';
+import { parseAppStoreScreenshot } from '@/ocr/parseAppStoreScreenshot';
 import { FieldConfidence, parseReceipt } from '@/ocr/parseReceipt';
 import { recognizeText } from '@/ocr/recognizeText';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
-import { BillingCycle, CurrencyCode } from '@/types/subscription.types';
+import { BillingCycle, CurrencyCode, SubscriptionSource } from '@/types/subscription.types';
 import { uFont, uScale } from '@/utils/uScale';
 
 const CYCLE_OPTIONS = (['weekly', 'monthly', 'yearly'] as BillingCycle[]).map((key) => ({
@@ -30,10 +31,31 @@ const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = { UAH: '₴', USD: '$', E
 const dotColorFor = (colors: ThemeColors, confidence: FieldConfidence | null) =>
   confidence === 'high' ? colors.good : colors.gold;
 
-type BatchItem = ParsedAppStoreSubscription & { selected: boolean };
+/** Один рядок форми — і одиночний чек, і кожна підписка з пакетного скріншота
+ *  рендеряться цим самим редагованим карткою, а не окремими шаблонами. */
+type EditableItem = {
+  key: string;
+  name: string;
+  nameConfidence: FieldConfidence | null;
+  /** З AI-розпізнавання фото; catalog.ts за (відредагованою) назвою на save має пріоритет. */
+  domain: string | null;
+  amountText: string;
+  amountConfidence: FieldConfidence | null;
+  currency: CurrencyCode;
+  cycle: BillingCycle;
+  /** Дата зі старого інвойсу/скріна — не показуємо напряму, лише як якір для
+   *  computeNextChargeAt (людина може сфотографувати чек багатомісячної давнини). */
+  chargedAt: Date;
+  chargedAtConfidence: FieldConfidence | null;
+  selected: boolean;
+  source: SubscriptionSource;
+};
 
-// Крок 7/8: якщо скріншот містить кілька підписок (Передплати App Store),
-// пропонуємо пакетне збереження; інакше падаємо на одиночний чек (parseReceipt).
+let keySeq = 0;
+const nextKey = () => `item-${keySeq++}`;
+
+// Крок 7/8: якщо скріншот містить кілька підписок (Передплати App Store), кожна
+// стає своєю редагованою карткою в тому самому списку; інакше — одна картка (чек).
 const Confirm = () => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -42,59 +64,79 @@ const Confirm = () => {
   const [loading, setLoading] = useState(Boolean(uri));
   const [ocrError, setOcrError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-
-  const [batchItems, setBatchItems] = useState<BatchItem[] | null>(null);
-
-  const [merchant, setMerchant] = useState('');
-  const [merchantConfidence, setMerchantConfidence] = useState<FieldConfidence | null>(null);
-  const [amountText, setAmountText] = useState('');
-  const [currency, setCurrency] = useState<CurrencyCode>('UAH');
-  const [amountConfidence, setAmountConfidence] = useState<FieldConfidence | null>(null);
-  const [chargedAt, setChargedAt] = useState<Date>(() => new Date());
-  const [chargedAtConfidence, setChargedAtConfidence] = useState<FieldConfidence | null>(null);
-  const [cycle, setCycle] = useState<BillingCycle>('monthly');
+  const [items, setItems] = useState<EditableItem[]>([]);
 
   useEffect(() => {
     if (!uri) return;
 
+    // Локальний OCR — перший крок завжди: (а) безкоштовно й миттєво відрізняє
+    // скріншот App Store з кількома підписками (детермінований
+    // parseAppStoreScreenshot, 100% на реальних тестах), (б) для одиночного чека
+    // пробує локальний регексний parseReceipt — якщо витягнув і мерчанта, і суму,
+    // AI взагалі не викликаємо (миттєво й безкоштовно). AI (Groq) — лише
+    // фолбек, коли лого без читабельного тексту й локальний парсинг не впорався.
+    // Домен тут ніколи не питаємо — ім'я мерчанта на цьому кроці ще
+    // непідтверджене людиною, і хибне ім'я дало б хибний домен.
     recognizeText(uri)
-      .then((result) => {
-        console.log('[confirm] OCR fullText:', result.fullText);
-        result.blocks.forEach((block, index) =>
-          console.log(`[confirm] block ${index} [${block.confidence.toFixed(2)}]:`, block.text),
-        );
-
+      .then(async (result) => {
         const now = new Date();
-        console.log('[confirm] now:', now.toString());
-
         const batch = parseAppStoreScreenshot(result, now);
-        console.log('[confirm] parseAppStoreScreenshot →', JSON.stringify(batch, null, 2));
         if (batch.length > 0) {
-          setBatchItems(batch.map((item) => ({ ...item, selected: true })));
+          const batchItems: EditableItem[] = batch.map((sub) => ({
+            key: nextKey(),
+            name: sub.name,
+            nameConfidence: 'high',
+            domain: findMerchant(sub.name)?.domain ?? null,
+            amountText: String(sub.amount),
+            amountConfidence: 'high',
+            currency: sub.currency,
+            cycle: 'monthly',
+            chargedAt: sub.renewsAt ?? now,
+            chargedAtConfidence: sub.renewsAt ? 'high' : null,
+            selected: true,
+            source: 'app_store_screenshot',
+          }));
+          setItems(batchItems);
           return;
         }
 
         const parsed = parseReceipt(result);
-        console.log('[confirm] parseReceipt →', JSON.stringify(parsed, null, 2));
-        if (parsed.merchant) {
-          setMerchant(parsed.merchant.value);
-          setMerchantConfidence(parsed.merchant.confidence);
-        }
-        if (parsed.amount) {
-          setAmountText(String(parsed.amount.value.amount));
-          setCurrency(parsed.amount.value.currency);
-          setAmountConfidence(parsed.amount.confidence);
-        }
-        if (parsed.chargedAt) {
-          console.log(
-            '[confirm] chargedAt set to:',
-            parsed.chargedAt.value.toString(),
-            'formatShortDate:',
-            formatShortDate(toLocalIsoDate(parsed.chargedAt.value)),
-          );
-          setChargedAt(parsed.chargedAt.value);
-          setChargedAtConfidence(parsed.chargedAt.confidence);
-        }
+        const localOk = Boolean(parsed.merchant?.value) && Boolean(parsed.amount);
+
+        const item: EditableItem = localOk
+          ? {
+              key: nextKey(),
+              name: parsed.merchant!.value,
+              nameConfidence: parsed.merchant!.confidence,
+              domain: findMerchant(parsed.merchant!.value)?.domain ?? null,
+              amountText: String(parsed.amount!.value.amount),
+              amountConfidence: parsed.amount!.confidence,
+              currency: parsed.amount!.value.currency,
+              cycle: 'monthly',
+              chargedAt: parsed.chargedAt?.value ?? now,
+              chargedAtConfidence: parsed.chargedAt?.confidence ?? null,
+              selected: true,
+              source: 'receipt',
+            }
+          : await (async () => {
+              const analyzed = await analyzeSubscriptionPhoto(uri);
+              return {
+                key: nextKey(),
+                name: analyzed.merchantName,
+                nameConfidence: analyzed.confidence,
+                domain: findMerchant(analyzed.merchantName)?.domain ?? null,
+                amountText: analyzed.amount ? String(analyzed.amount) : '',
+                amountConfidence: analyzed.confidence,
+                currency: analyzed.currency,
+                cycle: analyzed.cycle,
+                chargedAt: analyzed.chargedAt ?? now,
+                chargedAtConfidence: analyzed.chargedAt ? analyzed.confidence : null,
+                selected: true,
+                source: 'receipt' as const,
+              };
+            })();
+
+        setItems([item]);
       })
       .catch((error) => {
         setOcrError(error instanceof Error ? error.message : String(error));
@@ -102,9 +144,12 @@ const Confirm = () => {
       .finally(() => setLoading(false));
   }, [uri]);
 
-  const amount = Number(amountText.replace(',', '.'));
-  const canSave = merchant.trim().length > 0 && amountText.length > 0 && !Number.isNaN(amount);
-  const selectedCount = batchItems?.filter((item) => item.selected).length ?? 0;
+  const isBatch = items.length > 1;
+  const selectedItems = items.filter((item) => item.selected);
+  const canSave = selectedItems.every((item) => {
+    const amount = Number(item.amountText.replace(',', '.'));
+    return item.name.trim().length > 0 && item.amountText.length > 0 && !Number.isNaN(amount);
+  });
 
   const handleClose = useCallback(() => {
     router.back();
@@ -114,31 +159,42 @@ const Confirm = () => {
     router.back();
   }, []);
 
-  const handleToggleBatchItem = useCallback((index: number) => {
-    setBatchItems((items) =>
-      items
-        ? items.map((item, i) => (i === index ? { ...item, selected: !item.selected } : item))
-        : items,
+  const updateItem = useCallback((key: string, patch: Partial<EditableItem>) => {
+    setItems((current) => current.map((item) => (item.key === key ? { ...item, ...patch } : item)));
+  }, []);
+
+  const handleToggleItem = useCallback((key: string) => {
+    setItems((current) =>
+      current.map((item) => (item.key === key ? { ...item, selected: !item.selected } : item)),
     );
   }, []);
 
-  const handleSaveBatch = useCallback(async () => {
-    if (!batchItems || selectedCount === 0) return;
+  const handleSave = useCallback(async () => {
+    if (!canSave || selectedItems.length === 0) return;
 
     setSaveError(null);
     const now = new Date();
     try {
-      for (const item of batchItems) {
-        if (!item.selected) continue;
+      for (const item of selectedItems) {
+        const trimmedName = item.name.trim();
+        // Ім'я мерчанта тепер підтверджене людиною (вона могла його виправити
+        // в полі форми) — саме тут, а не раніше, безпечно питати AI про домен.
+        const catalogDomain = findMerchant(trimmedName)?.domain ?? null;
+        const domain =
+          catalogDomain ??
+          item.domain ??
+          (await lookupMerchantDomain(trimmedName).catch(() => null));
+
         await createSubscription(
           {
-            name: item.name,
-            category: item.category,
-            amount: item.amount,
+            name: trimmedName,
+            category: findMerchant(trimmedName)?.category ?? 'other',
+            domain,
+            amount: Number(item.amountText.replace(',', '.')),
             currency: item.currency,
-            cycle: 'monthly',
-            firstChargeAt: item.renewsAt ?? now,
-            source: 'app_store_screenshot',
+            cycle: item.cycle,
+            firstChargeAt: item.chargedAt,
+            source: item.source,
           },
           now,
         );
@@ -147,136 +203,14 @@ const Confirm = () => {
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : String(error));
     }
-  }, [batchItems, selectedCount]);
-
-  const handleSaveSingle = useCallback(async () => {
-    if (!canSave) return;
-
-    setSaveError(null);
-    const trimmedName = merchant.trim();
-    try {
-      await createSubscription(
-        {
-          name: trimmedName,
-          category: findMerchant(trimmedName)?.category ?? 'other',
-          amount,
-          currency,
-          cycle,
-          firstChargeAt: chargedAt,
-          source: 'receipt',
-        },
-        new Date(),
-      );
-      router.dismissAll();
-    } catch (error) {
-      setSaveError(error instanceof Error ? error.message : String(error));
-    }
-  }, [canSave, merchant, amount, currency, cycle, chargedAt]);
-
-  const renderBatch = (items: BatchItem[]) => (
-    <>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.batchTitle}>{strings.confirm.batchTitle(items.length)}</Text>
-        {items.map((item, index) => (
-          <Pressable
-            key={`${item.name}-${index}`}
-            onPress={() => handleToggleBatchItem(index)}
-            style={styles.batchRow}
-          >
-            <CategoryBadge category={item.category} color={colors.accent2} size={38} />
-            <View style={styles.batchMid}>
-              <Text style={styles.batchName}>{item.name}</Text>
-              <Text style={styles.batchSub}>{item.renewsAtText}</Text>
-            </View>
-            <Text style={styles.batchPrice}>{formatMoney(item.amount, item.currency)}</Text>
-            <View style={[styles.checkbox, item.selected && styles.checkboxOn]}>
-              {item.selected ? (
-                <Ionicons name="checkmark" size={uScale(13)} color={colors.onAccent} />
-              ) : null}
-            </View>
-          </Pressable>
-        ))}
-      </ScrollView>
-
-      <View style={styles.bottom}>
-        {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
-        <PrimaryButton label={strings.confirm.saveBatch(selectedCount)} onPress={handleSaveBatch} />
-        <Pressable onPress={handleReject}>
-          <Text style={styles.notASubscription}>{strings.confirm.notASubscription}</Text>
-        </Pressable>
-      </View>
-    </>
-  );
-
-  const renderSingle = () => (
-    <>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.fieldRow}>
-          <View
-            style={[styles.confDot, { backgroundColor: dotColorFor(colors, merchantConfidence) }]}
-          />
-          <View style={styles.fieldMid}>
-            <LabeledInput
-              label={strings.confirm.merchantLabel}
-              value={merchant}
-              onChangeText={setMerchant}
-              placeholder="Netflix"
-            />
-          </View>
-        </View>
-
-        <View style={styles.fieldRow}>
-          <View
-            style={[styles.confDot, { backgroundColor: dotColorFor(colors, amountConfidence) }]}
-          />
-          <View style={styles.fieldMid}>
-            <LabeledInput
-              label={strings.confirm.amountLabel}
-              value={amountText}
-              onChangeText={setAmountText}
-              placeholder="0,00"
-              keyboardType="decimal-pad"
-              rightAdornment={
-                <View style={styles.currencyPick}>
-                  <Text style={styles.currencyText}>{CURRENCY_SYMBOLS[currency]}</Text>
-                </View>
-              }
-            />
-          </View>
-        </View>
-
-        <PillGroup
-          label={strings.confirm.periodLabel}
-          options={CYCLE_OPTIONS}
-          value={cycle}
-          onChange={setCycle}
-        />
-
-        <View style={styles.fieldRow}>
-          <View
-            style={[styles.confDot, { backgroundColor: dotColorFor(colors, chargedAtConfidence) }]}
-          />
-          <View style={styles.fieldMid}>
-            <Text style={styles.fieldLabel}>{strings.confirm.nextChargeLabel}</Text>
-            <Text style={styles.fieldValue}>{formatShortDate(toLocalIsoDate(chargedAt))}</Text>
-          </View>
-        </View>
-      </ScrollView>
-
-      <View style={styles.bottom}>
-        {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
-        <PrimaryButton label={strings.confirm.save} onPress={handleSaveSingle} />
-        <Pressable onPress={handleReject}>
-          <Text style={styles.notASubscription}>{strings.confirm.notASubscription}</Text>
-        </Pressable>
-      </View>
-    </>
-  );
+  }, [canSave, selectedItems]);
 
   return (
     <Screen padded={false} style={styles.pad}>
       <View style={styles.topbar}>
-        <Text style={styles.title}>{strings.confirm.title}</Text>
+        <Text style={styles.title}>
+          {isBatch ? strings.confirm.batchTitle(items.length) : strings.confirm.title}
+        </Text>
         <Pressable onPress={handleClose} style={styles.closeBtn}>
           <Ionicons name="close" size={uScale(15)} color={colors.text} />
         </Pressable>
@@ -290,8 +224,105 @@ const Confirm = () => {
       ) : null}
       {ocrError ? <Text style={styles.error}>{ocrError}</Text> : null}
 
-      {!loading && batchItems ? renderBatch(batchItems) : null}
-      {!loading && !batchItems ? renderSingle() : null}
+      {!loading && items.length > 0 ? (
+        <>
+          <ScrollView contentContainerStyle={styles.scroll}>
+            {items.map((item) => (
+              <View key={item.key} style={isBatch ? styles.card : undefined}>
+                {isBatch ? (
+                  <Pressable onPress={() => handleToggleItem(item.key)} style={styles.cardHeader}>
+                    <View style={[styles.checkbox, item.selected && styles.checkboxOn]}>
+                      {item.selected ? (
+                        <Ionicons name="checkmark" size={uScale(13)} color={colors.onAccent} />
+                      ) : null}
+                    </View>
+                    <Text style={styles.cardHeaderLabel}>
+                      {item.selected ? strings.confirm.included : strings.confirm.excluded}
+                    </Text>
+                  </Pressable>
+                ) : null}
+
+                <View style={styles.fieldRow}>
+                  <View
+                    style={[
+                      styles.confDot,
+                      { backgroundColor: dotColorFor(colors, item.nameConfidence) },
+                    ]}
+                  />
+                  <View style={styles.fieldMid}>
+                    <LabeledInput
+                      label={strings.confirm.merchantLabel}
+                      value={item.name}
+                      onChangeText={(name) => updateItem(item.key, { name })}
+                      placeholder="Netflix"
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.fieldRow}>
+                  <View
+                    style={[
+                      styles.confDot,
+                      { backgroundColor: dotColorFor(colors, item.amountConfidence) },
+                    ]}
+                  />
+                  <View style={styles.fieldMid}>
+                    <LabeledInput
+                      label={strings.confirm.amountLabel}
+                      value={item.amountText}
+                      onChangeText={(amountText) => updateItem(item.key, { amountText })}
+                      placeholder="0,00"
+                      keyboardType="decimal-pad"
+                      rightAdornment={
+                        <View style={styles.currencyPick}>
+                          <Text style={styles.currencyText}>{CURRENCY_SYMBOLS[item.currency]}</Text>
+                        </View>
+                      }
+                    />
+                  </View>
+                </View>
+
+                <PillGroup
+                  label={strings.confirm.periodLabel}
+                  options={CYCLE_OPTIONS}
+                  value={item.cycle}
+                  onChange={(cycle) => updateItem(item.key, { cycle })}
+                />
+
+                <View style={styles.fieldRow}>
+                  <View
+                    style={[
+                      styles.confDot,
+                      { backgroundColor: dotColorFor(colors, item.chargedAtConfidence) },
+                    ]}
+                  />
+                  <View style={styles.fieldMid}>
+                    <Text style={styles.fieldLabel}>{strings.confirm.nextChargeLabel}</Text>
+                    <Text style={styles.fieldValue}>
+                      {formatShortDate(
+                        toLocalIsoDate(computeNextChargeAt(item.chargedAt, item.cycle, new Date())),
+                      )}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+
+          <View style={styles.bottom}>
+            {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
+            <PrimaryButton
+              label={
+                isBatch ? strings.confirm.saveBatch(selectedItems.length) : strings.confirm.save
+              }
+              onPress={handleSave}
+            />
+            <Pressable onPress={handleReject}>
+              <Text style={styles.notASubscription}>{strings.confirm.notASubscription}</Text>
+            </Pressable>
+          </View>
+        </>
+      ) : null}
     </Screen>
   );
 };
@@ -339,6 +370,25 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.red,
       marginBottom: uScale(14),
     },
+    card: {
+      backgroundColor: colors.glass,
+      borderWidth: 1,
+      borderColor: colors.borderGlass,
+      borderRadius: uScale(16),
+      padding: uScale(14),
+      marginBottom: uScale(16),
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: uScale(8),
+      marginBottom: uScale(14),
+    },
+    cardHeaderLabel: {
+      fontFamily: fontFamilies.semiBold,
+      fontSize: uFont(12),
+      color: colors.textFaint,
+    },
     fieldRow: { flexDirection: 'row', alignItems: 'flex-start', gap: uScale(10) },
     confDot: {
       width: uScale(9),
@@ -383,32 +433,6 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.textFaint,
       marginTop: uScale(13),
     },
-    batchTitle: {
-      fontFamily: fontFamilies.extraBold,
-      fontSize: uFont(16),
-      color: colors.text,
-      marginBottom: uScale(14),
-    },
-    batchRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: uScale(10),
-      backgroundColor: colors.glass,
-      borderWidth: 1,
-      borderColor: colors.borderGlass,
-      borderRadius: uScale(14),
-      padding: uScale(12),
-      marginBottom: uScale(8),
-    },
-    batchMid: { flex: 1, minWidth: 0 },
-    batchName: { fontFamily: fontFamilies.bold, fontSize: uFont(13.5), color: colors.text },
-    batchSub: {
-      fontFamily: fontFamilies.medium,
-      fontSize: uFont(11.5),
-      color: colors.textFaint,
-      marginTop: uScale(1),
-    },
-    batchPrice: { fontFamily: fontFamilies.semiBold, fontSize: uFont(12.5), color: colors.textDim },
     checkbox: {
       width: uScale(20),
       height: uScale(20),

@@ -5,6 +5,7 @@ const makeSub = (overrides: Partial<Subscription>): Subscription => ({
   id: 'x',
   name: 'X',
   category: 'other',
+  domain: null,
   status: 'active',
   source: 'manual',
   amount: 100,

@@ -24,6 +24,7 @@ export const updateSubscriptionStatus = (id: string, status: SubscriptionStatus)
 export type NewSubscriptionInput = {
   name: string;
   category: Category;
+  domain?: string | null;
   amount: number;
   currency: CurrencyCode;
   cycle: BillingCycle;
@@ -40,6 +41,7 @@ export const createSubscription = (input: NewSubscriptionInput, now: Date) => {
     id: generateId(),
     name: input.name,
     category: input.category,
+    domain: input.domain ?? null,
     amount: input.amount,
     currency: input.currency,
     fxRate: 1,

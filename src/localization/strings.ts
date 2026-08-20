@@ -118,6 +118,8 @@ export const strings = {
     notASubscription: 'Це не підписка',
     batchTitle: (count: number) => `Знайдено ${count} підписок`,
     saveBatch: (count: number) => `Зберегти обрані (${count})`,
+    included: 'Додати',
+    excluded: 'Пропустити',
   },
   subscriptionDetail: {
     idPrefix: 'id: ',

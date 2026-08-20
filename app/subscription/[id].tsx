@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { CategoryBadge } from '@/components/CategoryBadge';
+import { MerchantLogo } from '@/components/MerchantLogo';
 import { Screen, SCREEN_PADDING_H } from '@/components/Screen';
 import { getSubscriptionById, updateSubscriptionStatus } from '@/db/queries/subscriptions';
 import { openSubscriptionSettings } from '@/lib/appStore';
@@ -69,7 +69,12 @@ const SubscriptionDetail = () => {
 
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.identity}>
-          <CategoryBadge category={sub.category} color={categoryColor} size={76} />
+          <MerchantLogo
+            domain={merchant?.domain ?? sub.domain}
+            category={sub.category}
+            color={categoryColor}
+            size={76}
+          />
           <Text style={styles.name}>{sub.name}</Text>
           <View style={styles.catTag}>
             <Text style={styles.catTagText}>{strings.categories[sub.category]}</Text>

@@ -20,7 +20,7 @@ const startOfDay = (date: Date): Date =>
 
 /** `new Date('YYYY-MM-DD')` парситься як UTC-північ — у західних часових поясах це
  *  «зсуває» дату на день назад. Дати зберігаються без часу, тож парсимо їх локально. */
-const parseIsoDate = (iso: string): Date => {
+export const parseIsoDate = (iso: string): Date => {
   const [year, month, day] = iso.split('-').map(Number);
   return new Date(year, month - 1, day);
 };

@@ -11,6 +11,7 @@ export type TimelineRowVM = {
   name: string;
   category: Category;
   categoryColor: string;
+  domain?: string | null;
   price: string;
   cycle: string;
   date: string;
@@ -28,6 +29,8 @@ export const toTimelineRowVM = (sub: Subscription, now: Date): TimelineRowVM => 
     name: sub.name,
     category: sub.category,
     categoryColor,
+    // Каталог (перевірений домен) має пріоритет над тим, що зберегли з AI при створенні.
+    domain: merchant?.domain ?? sub.domain,
     price: formatMoney(sub.amount, sub.currency),
     cycle: formatCycleAdverb(sub.cycle),
     date: formatShortDate(sub.nextChargeAt),

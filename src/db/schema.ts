@@ -14,6 +14,9 @@ export const subscriptions = sqliteTable('subscriptions', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   category: text('category').notNull().$type<Category>(),
+  /** З merchants.catalog.ts (точний матч) або від AI-розпізнавання фото —
+   *  null, якщо жоден джерело не було впевнене (MerchantLogo падає на бейдж). */
+  domain: text('domain'),
   amount: real('amount').notNull(),
   currency: text('currency').notNull().$type<CurrencyCode>(),
   fxRate: real('fx_rate').notNull(),
