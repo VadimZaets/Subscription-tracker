@@ -7,13 +7,17 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { Screen, SCREEN_PADDING_H } from '@/components/Screen';
 import { TAB_BAR_CLEARANCE } from '@/components/tabBar.constants';
 import { resetDatabase } from '@/db/queries/reset';
+import { getDefaultCurrency, setDefaultCurrency } from '@/lib/currency';
+import { CURRENCY_CYCLE } from '@/lib/format/money';
 import { getRegion, Region, setRegion, SUPPORTED_REGIONS } from '@/lib/region';
 import { strings } from '@/localization/strings';
 import { TabScreenProps } from '@/navigation/types';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
+import { CurrencyCode } from '@/types/subscription.types';
 import { uFont, uScale } from '@/utils/uScale';
 
 const REGION_OPTIONS: Region[] = [...SUPPORTED_REGIONS, 'OTHER'];
+const CURRENCY_LABELS: Record<CurrencyCode, string> = { UAH: 'UAH ₴', EUR: 'EUR €', USD: 'USD $' };
 
 type Row = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -30,9 +34,13 @@ export const Settings = ({ navigation }: TabScreenProps<'settings'>) => {
   const [region, setRegionState] = useState<Region | null>(null);
   const [regionSheetOpen, setRegionSheetOpen] = useState(false);
   const regionSheet = useRef<TrueSheet>(null);
+  const [currency, setCurrencyState] = useState<CurrencyCode | null>(null);
+  const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
+  const currencySheet = useRef<TrueSheet>(null);
 
   useEffect(() => {
     getRegion().then(setRegionState);
+    getDefaultCurrency().then(setCurrencyState);
   }, []);
 
   useEffect(() => {
@@ -43,6 +51,14 @@ export const Settings = ({ navigation }: TabScreenProps<'settings'>) => {
     }
   }, [regionSheetOpen]);
 
+  useEffect(() => {
+    if (currencySheetOpen) {
+      currencySheet.current?.present().catch(() => {});
+    } else {
+      currencySheet.current?.dismiss().catch(() => {});
+    }
+  }, [currencySheetOpen]);
+
   const handleOpenPaywall = useCallback(() => {
     navigation.navigate('Paywall');
   }, [navigation]);
@@ -51,6 +67,12 @@ export const Settings = ({ navigation }: TabScreenProps<'settings'>) => {
     setRegionState(next);
     setRegion(next).catch(console.error);
     setRegionSheetOpen(false);
+  }, []);
+
+  const handleSelectCurrency = useCallback((next: CurrencyCode) => {
+    setCurrencyState(next);
+    setDefaultCurrency(next).catch(console.error);
+    setCurrencySheetOpen(false);
   }, []);
 
   const handleResetData = useCallback(() => {
@@ -79,7 +101,12 @@ export const Settings = ({ navigation }: TabScreenProps<'settings'>) => {
     { icon: 'time-outline', title: strings.settings.reminderUnused },
   ];
   const generalRows: Row[] = [
-    { icon: 'cash-outline', title: strings.settings.currency, value: 'UAH ₴' },
+    {
+      icon: 'cash-outline',
+      title: strings.settings.currency,
+      value: currency ? CURRENCY_LABELS[currency] : undefined,
+      onPress: () => setCurrencySheetOpen(true),
+    },
     {
       icon: 'location-outline',
       title: strings.settings.region,
@@ -189,6 +216,32 @@ export const Settings = ({ navigation }: TabScreenProps<'settings'>) => {
             >
               <Text style={styles.regionOptionLabel}>{strings.settings.regionValues[option]}</Text>
               {region === option ? (
+                <Ionicons name="checkmark" size={uScale(16)} color={colors.accent} />
+              ) : null}
+            </Pressable>
+          ))}
+        </View>
+      </TrueSheet>
+
+      <TrueSheet
+        ref={currencySheet}
+        detents={['auto']}
+        cornerRadius={uScale(24)}
+        backgroundColor={colors.bg}
+        grabber={false}
+        onDidDismiss={() => setCurrencySheetOpen(false)}
+      >
+        <View style={styles.regionSheet}>
+          <View style={styles.sheetGrabber} />
+          <Text style={styles.regionSheetTitle}>{strings.settings.currency}</Text>
+          {CURRENCY_CYCLE.map((option) => (
+            <Pressable
+              key={option}
+              onPress={() => handleSelectCurrency(option)}
+              style={styles.regionOption}
+            >
+              <Text style={styles.regionOptionLabel}>{CURRENCY_LABELS[option]}</Text>
+              {currency === option ? (
                 <Ionicons name="checkmark" size={uScale(16)} color={colors.accent} />
               ) : null}
             </Pressable>

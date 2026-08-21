@@ -20,7 +20,9 @@ import { TimelineRow } from '@/components/TimelineRow';
 import { Viewfinder } from '@/components/Viewfinder';
 import { getSetting } from '@/db/queries/settings';
 import { listSubscriptions } from '@/db/queries/subscriptions';
+import { getDefaultCurrency } from '@/lib/currency';
 import { formatMoney } from '@/lib/format/money';
+import { getFxRateFromUAH } from '@/lib/fx';
 import { fetchNewsForUser } from '@/lib/news';
 import { getRegion } from '@/lib/region';
 import { computeMonthlyTotal } from '@/lib/viewModels/monthlyTotal';
@@ -28,6 +30,7 @@ import { toTimelineRowVM } from '@/lib/viewModels/subscriptionRow';
 import { strings } from '@/localization/strings';
 import { TabScreenProps } from '@/navigation/types';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
+import { CurrencyCode } from '@/types/subscription.types';
 import { uFont, uScale } from '@/utils/uScale';
 
 /** Скрол, за який hero встигає повністю згорнутись у компактну смугу. */
@@ -52,12 +55,43 @@ export const Home = ({ navigation }: TabScreenProps<'home'>) => {
     .sort((a, b) => a.nextChargeAt.localeCompare(b.nextChargeAt));
   const rows = activeSubscriptions.map((sub) => toTimelineRowVM(sub, now));
 
+  // computeMonthlyTotal завжди рахує в UAH (кожна підписка вже зберігає
+  // fxRate саме до UAH) — displayTotal/displayCurrency лише перекладають цю
+  // суму в обрану в Settings валюту, не чіпаючи саме сховище.
   const monthlyTotal = computeMonthlyTotal(activeSubscriptions);
-  const monthlyTotalLabel = formatMoney(monthlyTotal, 'UAH');
-  const yearlySummary = strings.home.yearlySummary(formatMoney(monthlyTotal * 12, 'UAH'));
+  const [displayCurrency, setDisplayCurrency] = useState<CurrencyCode>('UAH');
+  const [displayTotal, setDisplayTotal] = useState(monthlyTotal);
+
+  // Round — сума з конвертації валют завжди дробова (courses ×44.65 і т.д.),
+  // а для орієнтовного місячного/річного підсумку копійки лише шумлять.
+  const monthlyTotalLabel = formatMoney(Math.round(displayTotal), displayCurrency);
+  const yearlySummary = strings.home.yearlySummary(
+    formatMoney(Math.round(displayTotal * 12), displayCurrency),
+  );
   const nextCharge = rows[0];
 
   const [hasUnreadNews, setHasUnreadNews] = useState(false);
+
+  // useFocusEffect — та сама причина, що й для новин нижче: валюту можна
+  // змінити в Settings (інший таб) і повернутись назад без розмонтування
+  // Home, тож простий useEffect на маунт цього не підхопить.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+
+      (async () => {
+        const currency = await getDefaultCurrency();
+        const rate = await getFxRateFromUAH(currency);
+        if (cancelled) return;
+        setDisplayCurrency(currency);
+        setDisplayTotal(monthlyTotal * rate);
+      })();
+
+      return () => {
+        cancelled = true;
+      };
+    }, [monthlyTotal]),
+  );
 
   // useFocusEffect, не звичайний useEffect — Home лишається змонтованим, поки
   // ти на News і повертаєшся назад (таб-екрани не розмонтовуються), тож

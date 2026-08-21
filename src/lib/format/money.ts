@@ -1,10 +1,16 @@
 import { CurrencyCode } from '@/types/subscription.types';
 
-const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
+export const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
   UAH: '₴',
   USD: '$',
   EUR: '€',
 };
+
+/** Порядок циклічного перемикання валют в інпутах (Add.tsx, Confirm.tsx). */
+export const CURRENCY_CYCLE: CurrencyCode[] = ['UAH', 'USD', 'EUR'];
+
+export const nextCurrency = (current: CurrencyCode): CurrencyCode =>
+  CURRENCY_CYCLE[(CURRENCY_CYCLE.indexOf(current) + 1) % CURRENCY_CYCLE.length];
 
 /** Розділювач тисяч, як у макетах ("3 480 ₴") — звичайний пробіл, не Unicode-варіант. */
 const THOUSANDS_SEPARATOR = ' ';

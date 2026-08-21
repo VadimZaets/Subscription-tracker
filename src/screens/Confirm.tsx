@@ -14,6 +14,8 @@ import { Screen, SCREEN_PADDING_H } from '@/components/Screen';
 import { createSubscription, findActiveDuplicate } from '@/db/queries/subscriptions';
 import { computeNextChargeAt } from '@/lib/billing/nextCharge';
 import { formatShortDate, toLocalIsoDate } from '@/lib/format/date';
+import { CURRENCY_SYMBOLS, nextCurrency } from '@/lib/format/money';
+import { getFxRateToUAH } from '@/lib/fx';
 import { strings } from '@/localization/strings';
 import { RootStackScreenProps } from '@/navigation/types';
 import { analyzeSubscriptionPhoto } from '@/ocr/analyzeSubscriptionPhoto';
@@ -33,8 +35,6 @@ const CYCLE_OPTIONS = (['weekly', 'monthly', 'yearly'] as BillingCycle[]).map((k
   key,
   label: strings.cycles[key],
 }));
-
-const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = { UAH: '₴', USD: '$', EUR: '€' };
 
 const dotColorFor = (colors: ThemeColors, confidence: FieldConfidence | null) =>
   confidence === 'high' ? colors.good : colors.gold;
@@ -314,6 +314,7 @@ export const Confirm = ({ route, navigation }: RootStackScreenProps<'Confirm'>) 
         const info = item.domain
           ? { domain: item.domain, cancelUrl: null }
           : await lookupMerchantInfo(trimmedName).catch(() => ({ domain: null, cancelUrl: null }));
+        const fxRate = await getFxRateToUAH(item.currency).catch(() => 1);
 
         await createSubscription(
           {
@@ -323,6 +324,7 @@ export const Confirm = ({ route, navigation }: RootStackScreenProps<'Confirm'>) 
             cancelUrl: info.cancelUrl,
             amount,
             currency: item.currency,
+            fxRate,
             cycle: item.cycle,
             firstChargeAt: item.chargedAt,
             source: item.source,
@@ -432,9 +434,14 @@ export const Confirm = ({ route, navigation }: RootStackScreenProps<'Confirm'>) 
                       placeholder="0,00"
                       keyboardType="decimal-pad"
                       rightAdornment={
-                        <View style={styles.currencyPick}>
+                        <Pressable
+                          style={styles.currencyPick}
+                          onPress={() =>
+                            updateItem(item.key, { currency: nextCurrency(item.currency) })
+                          }
+                        >
                           <Text style={styles.currencyText}>{CURRENCY_SYMBOLS[item.currency]}</Text>
-                        </View>
+                        </Pressable>
                       }
                     />
                   </View>

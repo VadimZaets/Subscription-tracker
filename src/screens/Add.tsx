@@ -11,11 +11,14 @@ import { ToggleRow } from '@/components/form/ToggleRow';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { Screen, SCREEN_PADDING_H } from '@/components/Screen';
 import { createSubscription } from '@/db/queries/subscriptions';
+import { CURRENCY_SYMBOLS, nextCurrency } from '@/lib/format/money';
+import { getFxRateToUAH } from '@/lib/fx';
 import { strings } from '@/localization/strings';
 import { RootStackScreenProps } from '@/navigation/types';
+import { lookupMerchantInfo } from '@/ocr/lookupMerchantDomain';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
 import { Category } from '@/types/category.types';
-import { BillingCycle } from '@/types/subscription.types';
+import { BillingCycle, CurrencyCode } from '@/types/subscription.types';
 import { uFont, uScale } from '@/utils/uScale';
 
 const CATEGORY_OPTIONS = (
@@ -39,11 +42,13 @@ export const Add = ({ navigation }: RootStackScreenProps<'Add'>) => {
   const [name, setName] = useState('');
   const [category, setCategory] = useState<Category>('streaming');
   const [amountText, setAmountText] = useState('');
+  const [currency, setCurrency] = useState<CurrencyCode>('UAH');
   const [cycle, setCycle] = useState<BillingCycle>('monthly');
   const [firstChargeAt, setFirstChargeAt] = useState(() => new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [reminderOn, setReminderOn] = useState(true);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const amount = Number(amountText.replace(',', '.'));
   const canSubmit = name.trim().length > 0 && amountText.length > 0 && !Number.isNaN(amount);
@@ -62,19 +67,41 @@ export const Add = ({ navigation }: RootStackScreenProps<'Add'>) => {
   }, []);
 
   const handleSubmit = useCallback(async () => {
-    if (!canSubmit) return;
+    if (!canSubmit || isSaving) return;
 
     setSaveError(null);
+    setIsSaving(true);
     try {
+      const trimmedName = name.trim();
+      // Той самий Supabase-кеш → AI-фолбек шлях, що й при збереженні зі
+      // скріншота (Confirm.tsx) — ручне введення не має лишати підписку без
+      // лого/cancelUrl лише тому, що фото не було.
+      const info = await lookupMerchantInfo(trimmedName).catch(() => ({
+        domain: null,
+        cancelUrl: null,
+      }));
+      const fxRate = await getFxRateToUAH(currency).catch(() => 1);
+
       await createSubscription(
-        { name: name.trim(), category, amount, currency: 'UAH', cycle, firstChargeAt },
+        {
+          name: trimmedName,
+          category,
+          domain: info.domain,
+          cancelUrl: info.cancelUrl,
+          amount,
+          currency,
+          fxRate,
+          cycle,
+          firstChargeAt,
+        },
         new Date(),
       );
       navigation.goBack();
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : String(error));
+      setIsSaving(false);
     }
-  }, [canSubmit, name, category, amount, cycle, firstChargeAt, navigation]);
+  }, [canSubmit, isSaving, name, category, amount, currency, cycle, firstChargeAt, navigation]);
 
   return (
     <Screen padded={false} style={styles.pad}>
@@ -108,9 +135,12 @@ export const Add = ({ navigation }: RootStackScreenProps<'Add'>) => {
           placeholder="0,00"
           keyboardType="decimal-pad"
           rightAdornment={
-            <View style={styles.currencyPick}>
-              <Text style={styles.currencyText}>₴</Text>
-            </View>
+            <Pressable
+              style={styles.currencyPick}
+              onPress={() => setCurrency((current) => nextCurrency(current))}
+            >
+              <Text style={styles.currencyText}>{CURRENCY_SYMBOLS[currency]}</Text>
+            </Pressable>
           }
         />
 
@@ -140,7 +170,12 @@ export const Add = ({ navigation }: RootStackScreenProps<'Add'>) => {
 
       <View style={styles.bottom}>
         {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
-        <PrimaryButton label={strings.add.submit} onPress={handleSubmit} />
+        <PrimaryButton
+          label={strings.add.submit}
+          onPress={handleSubmit}
+          loading={isSaving}
+          loadingLabel={strings.add.submitting}
+        />
       </View>
     </Screen>
   );

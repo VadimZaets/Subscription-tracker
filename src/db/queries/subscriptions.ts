@@ -40,13 +40,14 @@ export type NewSubscriptionInput = {
   cancelUrl?: string | null;
   amount: number;
   currency: CurrencyCode;
+  /** Курс до UAH на момент додавання (getFxRateToUAH) — заморожується тут,
+   *  а не рахується наживо при кожному рендері Hero, SPEC §4. */
+  fxRate?: number;
   cycle: BillingCycle;
   firstChargeAt: Date;
   source?: SubscriptionSource;
 };
 
-/** `fxRate` фіксується на 1, бо MVP поки не має живого курсу — мультивалютність
- *  готова на рівні схеми (SPEC §4), сам конвертер приходить пізніше. */
 export const createSubscription = (input: NewSubscriptionInput, now: Date) => {
   const nextChargeAt = computeNextChargeAt(input.firstChargeAt, input.cycle, now);
 
@@ -58,7 +59,7 @@ export const createSubscription = (input: NewSubscriptionInput, now: Date) => {
     cancelUrl: input.cancelUrl ?? null,
     amount: input.amount,
     currency: input.currency,
-    fxRate: 1,
+    fxRate: input.fxRate ?? 1,
     cycle: input.cycle,
     nextChargeAt: toLocalIsoDate(nextChargeAt),
     status: 'active',

@@ -90,6 +90,7 @@ export const strings = {
     reminderTitle: 'Нагадати про списання',
     reminderSub: 'За 3 дні до оплати',
     submit: 'Додати підписку',
+    submitting: 'Додаємо…',
   },
   categories: {
     streaming: 'Стрімінг',
