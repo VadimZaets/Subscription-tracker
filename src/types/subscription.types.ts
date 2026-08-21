@@ -12,7 +12,7 @@ export type Subscription = {
   id: string;
   name: string;
   category: Category;
-  /** З merchants.catalog.ts або AI-розпізнавання фото — null, якщо жодне не впевнене. */
+  /** З Supabase-кешу мерчантів або AI-розпізнавання фото — null, якщо жодне не впевнене. */
   domain: string | null;
   /** Пряме посилання на керування/скасування підписки в мерчанта — null, якщо
    *  невідоме (SubscriptionDetail тоді падає на системний екран Apple). */

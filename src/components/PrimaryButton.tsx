@@ -1,25 +1,43 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Loader } from '@/components/ui/Loader';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
 import { uFont, uScale } from '@/utils/uScale';
 
-type PrimaryButtonProps = { label: string; onPress: () => void };
+type PrimaryButtonProps = {
+  label: string;
+  onPress: () => void;
+  loading?: boolean;
+  loadingLabel?: string;
+};
 
-export const PrimaryButton = ({ label, onPress }: PrimaryButtonProps) => {
+export const PrimaryButton = ({
+  label,
+  onPress,
+  loading = false,
+  loadingLabel,
+}: PrimaryButtonProps) => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   return (
-    <Pressable onPress={onPress}>
+    <Pressable onPress={loading ? undefined : onPress} disabled={loading}>
       <LinearGradient
         colors={[colors.accent, colors.accent2]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.btn}
+        style={[styles.btn, loading && styles.btnLoading]}
       >
-        <Text style={styles.label}>{label}</Text>
+        {loading ? (
+          <View style={styles.loadingRow}>
+            <Loader size={uScale(18)} color={colors.onAccent} />
+            {loadingLabel ? <Text style={styles.label}>{loadingLabel}</Text> : null}
+          </View>
+        ) : (
+          <Text style={styles.label}>{label}</Text>
+        )}
       </LinearGradient>
     </Pressable>
   );
@@ -33,6 +51,8 @@ const makeStyles = (colors: ThemeColors) =>
       alignItems: 'center',
       justifyContent: 'center',
     },
+    btnLoading: { opacity: 0.85 },
+    loadingRow: { flexDirection: 'row', alignItems: 'center', gap: uScale(10) },
     label: {
       color: colors.text,
       fontFamily: fontFamilies.bold,

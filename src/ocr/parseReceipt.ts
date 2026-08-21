@@ -1,5 +1,4 @@
 import { resolveMonthIndex } from '@/lib/format/ukrainianMonth';
-import { findMerchant } from '@/ocr/merchants.catalog';
 import { OcrResult } from '@/ocr/recognizeText';
 import { CurrencyCode } from '@/types/subscription.types';
 
@@ -28,11 +27,6 @@ const AMOUNT_RE = /(\d+(?:[.,]\d{2}))\s*(грн|₴|usd|eur|\$|€)/gi;
 const DATE_RE = /(\d{1,2})\s+([а-яіїєґ]+)\.?\s+(\d{4})/i;
 
 const findMerchantField = (blocks: OcrResult['blocks']): ParsedField<string> | null => {
-  for (const block of blocks) {
-    const found = findMerchant(block.text);
-    if (found) return { value: found.name, confidence: 'high' };
-  }
-
   const candidate = blocks.find((block) => {
     const trimmed = block.text.trim();
     return trimmed.length >= 3 && !/^\d/.test(trimmed);

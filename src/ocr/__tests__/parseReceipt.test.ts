@@ -4,8 +4,8 @@ import { parseReceipt } from '@/ocr/parseReceipt';
 describe('parseReceipt', () => {
   const result = parseReceipt(youtubeReceiptFixture);
 
-  it('розпізнає мерчанта через merchants.catalog з високою впевненістю', () => {
-    expect(result.merchant).toEqual({ value: 'YouTube Premium', confidence: 'high' });
+  it('обирає перший нецифровий рядок як мерчанта з низькою впевненістю', () => {
+    expect(result.merchant).toEqual({ value: 'YouTube Premium', confidence: 'low' });
   });
 
   it('обирає суму, що повторюється найчастіше, з високою впевненістю', () => {

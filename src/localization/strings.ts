@@ -111,6 +111,7 @@ export const strings = {
   },
   confirm: {
     title: 'Перевір дані',
+    analyzingTitle: 'Аналіз',
     recognizing: 'Розпізнаємо фото…',
     analyzingSteps: [
       'Читаємо фото…',
@@ -126,6 +127,7 @@ export const strings = {
     nextChargeLabel: 'Дата списання',
     datePickerDone: 'Готово',
     save: 'Зберегти підписку',
+    saving: 'Зберігаємо…',
     notASubscription: 'Це не підписка',
     batchTitle: (count: number) => `Знайдено ${count} підписок`,
     saveBatch: (count: number) => `Зберегти обрані (${count})`,

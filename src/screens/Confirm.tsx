@@ -19,7 +19,6 @@ import { RootStackScreenProps } from '@/navigation/types';
 import { analyzeSubscriptionPhoto } from '@/ocr/analyzeSubscriptionPhoto';
 import { lookupMerchantInfo } from '@/ocr/lookupMerchantDomain';
 // ТИМЧАСОВО вимкнено разом з локальним OCR-шляхом нижче — див. коментар у useEffect.
-// import { findMerchant } from '@/ocr/merchants.catalog';
 // import { parseAppStoreScreenshot } from '@/ocr/parseAppStoreScreenshot';
 import { FieldConfidence } from '@/ocr/parseReceipt';
 import { useNotification } from '@/providers/NotificationProvider';
@@ -79,16 +78,32 @@ export const Confirm = ({ route, navigation }: RootStackScreenProps<'Confirm'>) 
 
   const [loading, setLoading] = useState(Boolean(uri));
   const [analyzingDone, setAnalyzingDone] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  // Заголовок міняється не одразу як loading стає false, а лише коли
+  // AnalyzingLoader встигає доіграти свій exiting-фейд (styles.flexFill нижче,
+  // FadeOut.duration(280)) — інакше текст стрибає раніше, ніж лоадер зникне.
+  const [showResultsHeader, setShowResultsHeader] = useState(false);
   const [items, setItems] = useState<EditableItem[]>([]);
   const [datePickerKey, setDatePickerKey] = useState<string | null>(null);
   const [pendingDate, setPendingDate] = useState<Date | null>(null);
   const datePickerSheet = useRef<TrueSheet>(null);
 
   useEffect(() => {
+    if (loading) {
+      setShowResultsHeader(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowResultsHeader(true), 280);
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  useEffect(() => {
+    // .catch — уникаємо необробленого відхилення, якщо екран уже
+    // розмонтувався (навігація пішла далі) раніше, ніж проміс встиг resolved.
     if (datePickerKey !== null) {
-      datePickerSheet.current?.present();
+      datePickerSheet.current?.present().catch(() => {});
     } else {
-      datePickerSheet.current?.dismiss();
+      datePickerSheet.current?.dismiss().catch(() => {});
     }
   }, [datePickerKey]);
 
@@ -272,8 +287,9 @@ export const Confirm = ({ route, navigation }: RootStackScreenProps<'Confirm'>) 
   }, []);
 
   const handleSave = useCallback(async () => {
-    if (!canSave || selectedItems.length === 0) return;
+    if (!canSave || selectedItems.length === 0 || isSaving) return;
 
+    setIsSaving(true);
     const now = new Date();
     try {
       let savedCount = 0;
@@ -291,10 +307,10 @@ export const Confirm = ({ route, navigation }: RootStackScreenProps<'Confirm'>) 
           continue;
         }
 
-        // ТИМЧАСОВО: локальний каталог доменів (findMerchant) вимкнено — домен
-        // і cancelUrl завжди йдуть через сервіс, щоб перевірити його ізольовано.
-        // Ім'я мерчанта тепер підтверджене людиною (вона могла його виправити
-        // в полі форми) — саме тут, а не раніше, безпечно питати AI про них.
+        // Домен і cancelUrl завжди йдуть через lookupMerchantInfo (Supabase-кеш,
+        // з фолбеком на AI). Ім'я мерчанта тепер підтверджене людиною (вона
+        // могла його виправити в полі форми) — саме тут, а не раніше, безпечно
+        // питати про них.
         const info = item.domain
           ? { domain: item.domain, cancelUrl: null }
           : await lookupMerchantInfo(trimmedName).catch(() => ({ domain: null, cancelUrl: null }));
@@ -332,22 +348,28 @@ export const Confirm = ({ route, navigation }: RootStackScreenProps<'Confirm'>) 
         });
       }
 
-      navigation.popToTop();
+      navigation.pop(navigation.getState().routes.length - 1);
     } catch (error) {
       showNotification({
         type: 'error',
         message: error instanceof Error ? error.message : String(error),
       });
+      setIsSaving(false);
     }
-  }, [canSave, selectedItems, navigation, showNotification]);
+  }, [canSave, selectedItems, isSaving, navigation, showNotification]);
 
   return (
     <Screen padded={false} style={styles.pad}>
       <View style={styles.topbar}>
         <Text style={styles.title}>
-          {/* "Знайдено N" — лише коли картки вже реально на екрані, не одразу
-              як items заповниться (це стається ще під час лоадера). */}
-          {!loading && isBatch ? strings.confirm.batchTitle(items.length) : strings.confirm.title}
+          {/* Під час аналізу — "Аналіз"; "Знайдено N" з'являється лише після
+              того, як AnalyzingLoader доіграв exiting-фейд (showResultsHeader),
+              а не одразу як loading стає false. */}
+          {loading
+            ? strings.confirm.analyzingTitle
+            : showResultsHeader && isBatch
+              ? strings.confirm.batchTitle(items.length)
+              : strings.confirm.title}
         </Text>
         <Pressable onPress={handleClose} style={styles.closeBtn}>
           <CrossIcon width={uScale(20)} height={uScale(20)} color={colors.text} />
@@ -463,6 +485,8 @@ export const Confirm = ({ route, navigation }: RootStackScreenProps<'Confirm'>) 
                 isBatch ? strings.confirm.saveBatch(selectedItems.length) : strings.confirm.save
               }
               onPress={handleSave}
+              loading={isSaving}
+              loadingLabel={strings.confirm.saving}
             />
             <Pressable onPress={handleReject}>
               <Text style={styles.notASubscription}>{strings.confirm.notASubscription}</Text>

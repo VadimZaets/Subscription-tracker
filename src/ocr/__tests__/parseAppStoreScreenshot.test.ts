@@ -12,7 +12,7 @@ describe('parseAppStoreScreenshot', () => {
   it('розпізнає Getcontact і резолвить дату поновлення в поточному році', () => {
     expect(result).toContainEqual({
       name: 'Getcontact',
-      category: 'software',
+      category: 'other',
       amount: 1.99,
       currency: 'USD',
       renewsAtText: '23 серпня',
@@ -20,10 +20,10 @@ describe('parseAppStoreScreenshot', () => {
     });
   });
 
-  it('розпізнає iCloud+ і резолвить категорію cloud через merchants.catalog', () => {
+  it('розпізнає iCloud+ з категорією за замовчуванням (без каталогу)', () => {
     expect(result).toContainEqual({
       name: 'iCloud+',
-      category: 'cloud',
+      category: 'other',
       amount: 2.99,
       currency: 'USD',
       renewsAtText: '14 вересня',
@@ -31,10 +31,10 @@ describe('parseAppStoreScreenshot', () => {
     });
   });
 
-  it('розпізнає Monthly RNI Pro Subscription і резолвить категорію через каталог', () => {
+  it('розпізнає Monthly RNI Pro Subscription з категорією за замовчуванням', () => {
     expect(result).toContainEqual({
       name: 'Monthly RNI Pro Subscription',
-      category: 'software',
+      category: 'other',
       amount: 2.49,
       currency: 'USD',
       renewsAtText: '20 серпня',

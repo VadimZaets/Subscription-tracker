@@ -1,5 +1,4 @@
 import { resolveNextOccurrence } from '@/lib/format/ukrainianMonth';
-import { findMerchant } from '@/ocr/merchants.catalog';
 import { OcrResult } from '@/ocr/recognizeText';
 import { Category } from '@/types/category.types';
 import { CurrencyCode } from '@/types/subscription.types';
@@ -59,7 +58,7 @@ export const parseAppStoreScreenshot = (
 
     parsed.push({
       name,
-      category: findMerchant(name)?.category ?? 'other',
+      category: 'other',
       amount: Number(priceMatch[1].replace(',', '.')),
       currency,
       renewsAtText,

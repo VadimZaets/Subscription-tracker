@@ -15,7 +15,6 @@ import { formatShortDate, formatWhen } from '@/lib/format/date';
 import { formatMoney } from '@/lib/format/money';
 import { strings } from '@/localization/strings';
 import { RootStackScreenProps } from '@/navigation/types';
-import { findMerchant } from '@/ocr/merchants.catalog';
 import { categoryColors, fontFamilies, ThemeColors, useTheme } from '@/theme';
 import { uFont, uScale } from '@/utils/uScale';
 
@@ -55,8 +54,7 @@ export const SubscriptionDetail = ({
     // Відомий мерчант з прямим посиланням на керування підпискою (не App
     // Store) — ведемо туди; інакше єдиний чесний варіант — системний екран
     // Apple (сторонній застосунок не може скасувати App Store-підписку сам).
-    // sub.cancelUrl (від AI при збереженні) має пріоритет над каталогом.
-    const cancelUrl = sub.cancelUrl ?? findMerchant(sub.name)?.cancelUrl;
+    const cancelUrl = sub.cancelUrl;
     awaitingCancelCheck.current = true;
 
     const open = cancelUrl ? Linking.openURL(cancelUrl) : openSubscriptionSettings();
@@ -93,8 +91,7 @@ export const SubscriptionDetail = ({
     );
   }
 
-  const merchant = findMerchant(sub.name);
-  const categoryColor = merchant?.color ?? categoryColors[sub.category];
+  const categoryColor = categoryColors[sub.category];
   const now = new Date();
 
   return (
@@ -111,7 +108,7 @@ export const SubscriptionDetail = ({
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.identity}>
           <MerchantLogo
-            domain={merchant?.domain ?? sub.domain}
+            domain={sub.domain}
             category={sub.category}
             color={categoryColor}
             size={76}

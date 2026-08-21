@@ -286,7 +286,12 @@ const makeStyles = (colors: ThemeColors) =>
       justifyContent: 'space-between',
       marginBottom: uScale(14),
     },
-    sectionTitle: { fontFamily: fontFamilies.extraBold, fontSize: uFont(16), color: colors.text },
+    sectionTitle: {
+      fontFamily: fontFamilies.extraBold,
+      fontSize: uFont(16),
+      color: colors.text,
+      marginBottom: uScale(8),
+    },
     sectionLink: { fontFamily: fontFamilies.bold, fontSize: uFont(12.5), color: colors.accent2 },
     emptyState: {
       flex: 1,

@@ -35,11 +35,13 @@ export const ConfirmSheet = ({
   const dismissedByUser = useRef(false);
 
   useEffect(() => {
+    // .catch — уникаємо необробленого відхилення, якщо екран уже
+    // розмонтувався раніше, ніж проміс встиг resolved.
     if (visible) {
       dismissedByUser.current = false;
-      sheet.current?.present();
+      sheet.current?.present().catch(() => {});
     } else {
-      sheet.current?.dismiss();
+      sheet.current?.dismiss().catch(() => {});
     }
   }, [visible]);
 

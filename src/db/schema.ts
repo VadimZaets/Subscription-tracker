@@ -14,11 +14,11 @@ export const subscriptions = sqliteTable('subscriptions', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   category: text('category').notNull().$type<Category>(),
-  /** З merchants.catalog.ts (точний матч) або від AI-розпізнавання фото —
+  /** З Supabase-кешу мерчантів (точний матч) або від AI-розпізнавання фото —
    *  null, якщо жоден джерело не було впевнене (MerchantLogo падає на бейдж). */
   domain: text('domain'),
   /** Пряме посилання на керування/скасування підписки в самого мерчанта (не
-   *  App Store) — від AI (lookupMerchantInfo) або merchants.catalog.ts. null —
+   *  App Store) — від lookupMerchantInfo (Supabase-кеш або AI). null —
    *  SubscriptionDetail падає на системний екран Apple. */
   cancelUrl: text('cancel_url'),
   amount: real('amount').notNull(),

@@ -45,7 +45,7 @@ export const darkColors: ThemeColors = {
   transparent: 'transparent',
 };
 
-/** Фолбек-колір категорії, коли мерчант не знайдено в src/ocr/merchants.catalog.ts. */
+/** Колір категорії за замовчуванням (усі мерчанти тепер ідуть через це, без каталогу). */
 export const categoryColors: Record<Category, string> = {
   streaming: '#E44830',
   software: '#504ECA',

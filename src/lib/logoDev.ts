@@ -16,7 +16,7 @@ const buildLogoUrl = (path: string, size: number): string => {
   return `https://img.logo.dev/${path}?${params.toString()}`;
 };
 
-/** Точний домен із merchants.catalog.ts — єдиний надійний шлях. Пошук за назвою
+/** Точний домен (Supabase-кеш або AI) — єдиний надійний шлях. Пошук за назвою
  *  свідомо не використовується (див. MerchantLogo.tsx) — нечіткий збіг гірше,
  *  ніж чесна відсутність лого. */
 export const buildLogoUrlByDomain = (domain: string, size: number): string =>
