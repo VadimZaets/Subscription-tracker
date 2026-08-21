@@ -25,9 +25,13 @@ export const RootNavigator = () => {
     >
       <Stack.Screen name="Splash" component={Splash} />
       <Stack.Screen name="Tabs" component={TabNavigator} />
-      <Stack.Screen name="Add" component={Add} />
-      <Stack.Screen name="Confirm" component={Confirm} />
-      <Stack.Screen name="SubscriptionDetail" component={SubscriptionDetail} />
+      <Stack.Screen name="Add" component={Add} options={{ animation: 'fade' }} />
+      <Stack.Screen name="Confirm" component={Confirm} options={{ animation: 'fade' }} />
+      <Stack.Screen
+        name="SubscriptionDetail"
+        component={SubscriptionDetail}
+        options={{ animation: 'fade' }}
+      />
       <Stack.Screen name="Paywall" component={Paywall} />
       {__DEV__ ? <Stack.Screen name="DevOcrSpike" component={OcrSpike} /> : null}
     </Stack.Navigator>

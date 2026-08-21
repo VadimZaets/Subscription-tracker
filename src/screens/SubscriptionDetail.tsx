@@ -3,6 +3,7 @@ import { useLiveQuery } from 'drizzle-orm/expo-sqlite/query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import CrossIcon from '@/assets/icon/cross.svg';
 import TrashIcon from '@/assets/icon/trash.svg';
 import { MerchantLogo } from '@/components/MerchantLogo';
 import { Screen, SCREEN_PADDING_H } from '@/components/Screen';
@@ -84,7 +85,7 @@ export const SubscriptionDetail = ({
       <Screen padded={false} style={styles.pad}>
         <View style={styles.topbar}>
           <Pressable onPress={handleBack} style={styles.navBtn}>
-            <Ionicons name="chevron-back" size={uScale(16)} color={colors.text} />
+            <CrossIcon width={uScale(20)} height={uScale(20)} color={colors.text} />
           </Pressable>
         </View>
         <Text style={styles.notFound}>{strings.subscriptionDetail.notFound}</Text>
@@ -100,7 +101,7 @@ export const SubscriptionDetail = ({
     <Screen padded={false} style={styles.pad} gradientTint={categoryColor}>
       <View style={styles.topbar}>
         <Pressable onPress={handleBack} style={styles.navBtn}>
-          <Ionicons name="chevron-back" size={uScale(16)} color={colors.text} />
+          <CrossIcon width={uScale(20)} height={uScale(20)} color={colors.text} />
         </Pressable>
         <Pressable onPress={() => setShowDeleteConfirm(true)} style={styles.navBtn}>
           <TrashIcon width={uScale(16)} height={uScale(16)} color={colors.red} />

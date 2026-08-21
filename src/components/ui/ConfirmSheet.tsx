@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import { TrueSheet } from '@lodev09/react-native-true-sheet';
+import { useEffect, useMemo, useRef } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
 import { uFont, uScale } from '@/utils/uScale';
@@ -17,8 +17,8 @@ type ConfirmSheetProps = {
   onCancel: () => void;
 };
 
-/** Кастомний попап питання "так/ні" у стилі застосунку — той самий bottom-sheet
- *  підхід, що й у date-picker'і Confirm.tsx, замість нативного Alert. */
+/** Кастомний попап питання "так/ні" у стилі застосунку — нативний bottom-sheet
+ *  (react-native-true-sheet), керований декларативним пропом `visible`. */
 export const ConfirmSheet = ({
   visible,
   title,
@@ -31,21 +31,32 @@ export const ConfirmSheet = ({
 }: ConfirmSheetProps) => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const sheet = useRef<TrueSheet>(null);
+  const dismissedByUser = useRef(false);
+
+  useEffect(() => {
+    if (visible) {
+      dismissedByUser.current = false;
+      sheet.current?.present();
+    } else {
+      sheet.current?.dismiss();
+    }
+  }, [visible]);
+
+  const handleDidDismiss = () => {
+    if (visible) onCancel();
+  };
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onCancel}>
-      <Animated.View
-        style={styles.scrim}
-        entering={FadeIn.duration(180)}
-        exiting={FadeOut.duration(180)}
-      >
-        <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} />
-      </Animated.View>
-      <Animated.View
-        style={styles.sheet}
-        entering={SlideInDown.duration(220)}
-        exiting={SlideOutDown.duration(200)}
-      >
+    <TrueSheet
+      ref={sheet}
+      detents={['auto']}
+      cornerRadius={uScale(24)}
+      backgroundColor={colors.bg}
+      grabber={false}
+      onDidDismiss={handleDidDismiss}
+    >
+      <View style={styles.sheet}>
         <View style={styles.grabber} />
         <Text style={styles.title}>{title}</Text>
         {message ? <Text style={styles.message}>{message}</Text> : null}
@@ -61,24 +72,14 @@ export const ConfirmSheet = ({
         <Pressable onPress={onCancel} style={styles.cancelBtn}>
           <Text style={styles.cancelLabel}>{cancelLabel}</Text>
         </Pressable>
-      </Animated.View>
-    </Modal>
+      </View>
+    </TrueSheet>
   );
 };
 
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    scrim: { flex: 1, backgroundColor: colors.scrim },
     sheet: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: colors.bg,
-      borderTopLeftRadius: uScale(24),
-      borderTopRightRadius: uScale(24),
-      borderWidth: 1,
-      borderColor: colors.borderGlass,
       padding: uScale(20),
       paddingBottom: uScale(36),
       alignItems: 'center',

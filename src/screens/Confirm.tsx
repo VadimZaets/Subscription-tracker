@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import { TrueSheet } from '@lodev09/react-native-true-sheet';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import CrossIcon from '@/assets/icon/cross.svg';
 import { AnalyzingLoader } from '@/components/AnalyzingLoader';
@@ -81,6 +82,15 @@ export const Confirm = ({ route, navigation }: RootStackScreenProps<'Confirm'>) 
   const [items, setItems] = useState<EditableItem[]>([]);
   const [datePickerKey, setDatePickerKey] = useState<string | null>(null);
   const [pendingDate, setPendingDate] = useState<Date | null>(null);
+  const datePickerSheet = useRef<TrueSheet>(null);
+
+  useEffect(() => {
+    if (datePickerKey !== null) {
+      datePickerSheet.current?.present();
+    } else {
+      datePickerSheet.current?.dismiss();
+    }
+  }, [datePickerKey]);
 
   useEffect(() => {
     if (!uri) return;
@@ -340,7 +350,7 @@ export const Confirm = ({ route, navigation }: RootStackScreenProps<'Confirm'>) 
           {!loading && isBatch ? strings.confirm.batchTitle(items.length) : strings.confirm.title}
         </Text>
         <Pressable onPress={handleClose} style={styles.closeBtn}>
-          <CrossIcon width={uScale(15)} height={uScale(15)} color={colors.text} />
+          <CrossIcon width={uScale(20)} height={uScale(20)} color={colors.text} />
         </Pressable>
       </View>
 
@@ -461,24 +471,15 @@ export const Confirm = ({ route, navigation }: RootStackScreenProps<'Confirm'>) 
         </Animated.View>
       ) : null}
 
-      <Modal
-        visible={datePickerKey !== null}
-        transparent
-        animationType="none"
-        onRequestClose={handleCloseDatePicker}
+      <TrueSheet
+        ref={datePickerSheet}
+        detents={['auto']}
+        cornerRadius={uScale(24)}
+        backgroundColor={colors.bg}
+        grabber={false}
+        onDidDismiss={handleCloseDatePicker}
       >
-        <Animated.View
-          style={styles.sheetScrim}
-          entering={FadeIn.duration(180)}
-          exiting={FadeOut.duration(180)}
-        >
-          <Pressable style={StyleSheet.absoluteFill} onPress={handleCloseDatePicker} />
-        </Animated.View>
-        <Animated.View
-          style={styles.sheet}
-          entering={SlideInDown.duration(220)}
-          exiting={SlideOutDown.duration(200)}
-        >
+        <View style={styles.sheet}>
           <View style={styles.sheetGrabber} />
           {pendingDate ? (
             <DateTimePicker
@@ -492,8 +493,8 @@ export const Confirm = ({ route, navigation }: RootStackScreenProps<'Confirm'>) 
           <Pressable onPress={handleConfirmDate} style={styles.sheetDoneBtn}>
             <Text style={styles.sheetDoneText}>{strings.confirm.datePickerDone}</Text>
           </Pressable>
-        </Animated.View>
-      </Modal>
+        </View>
+      </TrueSheet>
     </Screen>
   );
 };
@@ -606,17 +607,7 @@ const makeStyles = (colors: ThemeColors) =>
       justifyContent: 'center',
     },
     checkboxOn: { backgroundColor: colors.good, borderColor: colors.good },
-    sheetScrim: { flex: 1, backgroundColor: colors.scrim },
     sheet: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: colors.bg,
-      borderTopLeftRadius: uScale(24),
-      borderTopRightRadius: uScale(24),
-      borderWidth: 1,
-      borderColor: colors.borderGlass,
       padding: uScale(20),
       paddingBottom: uScale(36),
       alignItems: 'center',

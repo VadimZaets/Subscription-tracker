@@ -5,6 +5,7 @@ import { AddActionOverlay } from '@/components/AddActionOverlay';
 import { SnapsyTabBar } from '@/components/SnapsyTabBar';
 import { Home } from '@/screens/Home';
 import { Settings } from '@/screens/Settings';
+import { useTheme } from '@/theme';
 
 import { TabParamList } from './types';
 
@@ -15,6 +16,7 @@ const Tab = createBottomTabNavigator<TabParamList>();
 const AddActionPlaceholder = () => null;
 
 export const TabNavigator = () => {
+  const { colors } = useTheme();
   const [actionOpen, setActionOpen] = useState(false);
 
   const handleToggleAction = useCallback(() => setActionOpen((open) => !open), []);
@@ -22,7 +24,7 @@ export const TabNavigator = () => {
 
   return (
     <Tab.Navigator
-      screenOptions={{ headerShown: false }}
+      screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: colors.bg } }}
       // Оверлей іде ПЕРЕД баром у тому самому дереві — тому бар (і кнопка «+»)
       // малюється поверх розмиття, без окремої модалки й без копії кнопки.
       tabBar={(props) => (

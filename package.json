@@ -6,6 +6,7 @@
     "@dariyd/react-native-text-recognition": "^2.0.20",
     "@expo-google-fonts/urbanist": "^0.4.2",
     "@expo/vector-icons": "^15.0.2",
+    "@lodev09/react-native-true-sheet": "^3.11.12",
     "@react-native-community/datetimepicker": "9.1.0",
     "@react-navigation/bottom-tabs": "^7.18.17",
     "@react-navigation/native": "^7.3.17",

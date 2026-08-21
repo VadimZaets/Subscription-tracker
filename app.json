@@ -23,7 +23,10 @@
     },
     "ios": {
       "bundleIdentifier": "com.anonymous.snapsy",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "UIDesignRequiresCompatibility": true
+      }
     }
   }
 }
