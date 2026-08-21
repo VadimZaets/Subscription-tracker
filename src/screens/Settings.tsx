@@ -1,15 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
+import { TrueSheet } from '@lodev09/react-native-true-sheet';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Screen, SCREEN_PADDING_H } from '@/components/Screen';
 import { TAB_BAR_CLEARANCE } from '@/components/tabBar.constants';
 import { resetDatabase } from '@/db/queries/reset';
+import { getRegion, Region, setRegion, SUPPORTED_REGIONS } from '@/lib/region';
 import { strings } from '@/localization/strings';
 import { TabScreenProps } from '@/navigation/types';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
 import { uFont, uScale } from '@/utils/uScale';
+
+const REGION_OPTIONS: Region[] = [...SUPPORTED_REGIONS, 'OTHER'];
 
 type Row = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -23,10 +27,31 @@ type Row = {
 export const Settings = ({ navigation }: TabScreenProps<'settings'>) => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const [region, setRegionState] = useState<Region | null>(null);
+  const [regionSheetOpen, setRegionSheetOpen] = useState(false);
+  const regionSheet = useRef<TrueSheet>(null);
+
+  useEffect(() => {
+    getRegion().then(setRegionState);
+  }, []);
+
+  useEffect(() => {
+    if (regionSheetOpen) {
+      regionSheet.current?.present().catch(() => {});
+    } else {
+      regionSheet.current?.dismiss().catch(() => {});
+    }
+  }, [regionSheetOpen]);
 
   const handleOpenPaywall = useCallback(() => {
     navigation.navigate('Paywall');
   }, [navigation]);
+
+  const handleSelectRegion = useCallback((next: Region) => {
+    setRegionState(next);
+    setRegion(next).catch(console.error);
+    setRegionSheetOpen(false);
+  }, []);
 
   const handleResetData = useCallback(() => {
     Alert.alert(strings.settings.deleteAllConfirmTitle, strings.settings.deleteAllConfirmMessage, [
@@ -55,6 +80,12 @@ export const Settings = ({ navigation }: TabScreenProps<'settings'>) => {
   ];
   const generalRows: Row[] = [
     { icon: 'cash-outline', title: strings.settings.currency, value: 'UAH ₴' },
+    {
+      icon: 'location-outline',
+      title: strings.settings.region,
+      value: region ? strings.settings.regionValues[region] : undefined,
+      onPress: () => setRegionSheetOpen(true),
+    },
     { icon: 'contrast-outline', title: strings.settings.theme, value: strings.settings.themeValue },
     {
       icon: 'globe-outline',
@@ -138,6 +169,32 @@ export const Settings = ({ navigation }: TabScreenProps<'settings'>) => {
 
         <Text style={styles.version}>{strings.settings.version}</Text>
       </ScrollView>
+
+      <TrueSheet
+        ref={regionSheet}
+        detents={['auto']}
+        cornerRadius={uScale(24)}
+        backgroundColor={colors.bg}
+        grabber={false}
+        onDidDismiss={() => setRegionSheetOpen(false)}
+      >
+        <View style={styles.regionSheet}>
+          <View style={styles.sheetGrabber} />
+          <Text style={styles.regionSheetTitle}>{strings.settings.region}</Text>
+          {REGION_OPTIONS.map((option) => (
+            <Pressable
+              key={option}
+              onPress={() => handleSelectRegion(option)}
+              style={styles.regionOption}
+            >
+              <Text style={styles.regionOptionLabel}>{strings.settings.regionValues[option]}</Text>
+              {region === option ? (
+                <Ionicons name="checkmark" size={uScale(16)} color={colors.accent} />
+              ) : null}
+            </Pressable>
+          ))}
+        </View>
+      </TrueSheet>
     </Screen>
   );
 };
@@ -228,5 +285,33 @@ const makeStyles = (colors: ThemeColors) =>
       fontFamily: fontFamilies.semiBold,
       fontSize: uFont(11.5),
       color: colors.textFaint,
+    },
+    regionSheet: { padding: uScale(20), paddingBottom: uScale(36), alignItems: 'center' },
+    sheetGrabber: {
+      width: uScale(36),
+      height: uScale(4),
+      borderRadius: uScale(3),
+      backgroundColor: colors.borderGlass,
+      marginBottom: uScale(16),
+    },
+    regionSheetTitle: {
+      fontFamily: fontFamilies.extraBold,
+      fontSize: uFont(17),
+      color: colors.text,
+      marginBottom: uScale(12),
+    },
+    regionOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      alignSelf: 'stretch',
+      paddingVertical: uScale(14),
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderGlass,
+    },
+    regionOptionLabel: {
+      fontFamily: fontFamilies.semiBold,
+      fontSize: uFont(14.5),
+      color: colors.text,
     },
   });

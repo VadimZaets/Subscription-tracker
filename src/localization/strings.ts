@@ -61,6 +61,8 @@ export const strings = {
     reminderUnused: 'Про невикористані підписки',
     groupGeneral: 'Основне',
     currency: 'Валюта за замовчуванням',
+    region: 'Регіон',
+    regionValues: { UA: 'Україна', US: 'США', EU: 'Європа', OTHER: 'Інший' },
     theme: 'Тема',
     themeValue: 'Системна',
     language: 'Мова',
@@ -158,6 +160,14 @@ export const strings = {
     deleteConfirmMessage: 'Її можна буде додати знову, якщо передумаєш.',
     deleteConfirmYes: 'Видалити',
     deleteConfirmNo: 'Скасувати',
+  },
+  news: {
+    title: 'Новини',
+    empty: 'Поки що немає новин про твої підписки',
+    directionIncrease: 'Подорожчання',
+    directionDecrease: 'Подешевшання',
+    directionPromo: 'Акція',
+    directionOther: 'Оновлення ціни',
   },
   paywall: {
     eyebrow: 'SNAPSY PRO',

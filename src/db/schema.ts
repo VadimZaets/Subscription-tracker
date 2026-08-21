@@ -52,6 +52,15 @@ export const documents = sqliteTable('documents', {
   capturedAt: text('captured_at').notNull(),
 });
 
+// Простий key-value стіл для локальних налаштувань (регіон, lastSeenNewsAt
+// тощо) — без нової залежності типу AsyncStorage, той самий Drizzle/SQLite,
+// що й решта локального стану.
+export const appSettings = sqliteTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+});
+
 export type SubscriptionRow = typeof subscriptions.$inferSelect;
 export type PaymentRow = typeof payments.$inferSelect;
 export type DocumentRow = typeof documents.$inferSelect;
+export type AppSettingRow = typeof appSettings.$inferSelect;

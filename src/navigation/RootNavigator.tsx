@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Add } from '@/screens/Add';
 import { Confirm } from '@/screens/Confirm';
 import { OcrSpike } from '@/screens/dev/OcrSpike';
+import { News } from '@/screens/News';
 import { Paywall } from '@/screens/Paywall';
 import { Splash } from '@/screens/Splash';
 import { SubscriptionDetail } from '@/screens/SubscriptionDetail';
@@ -32,6 +33,7 @@ export const RootNavigator = () => {
         component={SubscriptionDetail}
         options={{ animation: 'fade' }}
       />
+      <Stack.Screen name="News" component={News} options={{ animation: 'fade' }} />
       <Stack.Screen name="Paywall" component={Paywall} />
       {__DEV__ ? <Stack.Screen name="DevOcrSpike" component={OcrSpike} /> : null}
     </Stack.Navigator>

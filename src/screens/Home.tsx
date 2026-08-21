@@ -1,5 +1,7 @@
+import { FontAwesome } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite/query';
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Extrapolation,
@@ -11,14 +13,16 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import ArrowToPlusIcon from '@/assets/icon/arrow-to-plus.svg';
-import NotificationIcon from '@/assets/icon/notification.svg';
 import { Screen, SCREEN_PADDING_H } from '@/components/Screen';
 import { TAB_BAR_CLEARANCE } from '@/components/tabBar.constants';
 import { Timeline } from '@/components/Timeline';
 import { TimelineRow } from '@/components/TimelineRow';
 import { Viewfinder } from '@/components/Viewfinder';
+import { getSetting } from '@/db/queries/settings';
 import { listSubscriptions } from '@/db/queries/subscriptions';
 import { formatMoney } from '@/lib/format/money';
+import { fetchNewsForUser } from '@/lib/news';
+import { getRegion } from '@/lib/region';
 import { computeMonthlyTotal } from '@/lib/viewModels/monthlyTotal';
 import { toTimelineRowVM } from '@/lib/viewModels/subscriptionRow';
 import { strings } from '@/localization/strings';
@@ -52,6 +56,32 @@ export const Home = ({ navigation }: TabScreenProps<'home'>) => {
   const monthlyTotalLabel = formatMoney(monthlyTotal, 'UAH');
   const yearlySummary = strings.home.yearlySummary(formatMoney(monthlyTotal * 12, 'UAH'));
   const nextCharge = rows[0];
+
+  const [hasUnreadNews, setHasUnreadNews] = useState(false);
+
+  // useFocusEffect, не звичайний useEffect — Home лишається змонтованим, поки
+  // ти на News і повертаєшся назад (таб-екрани не розмонтовуються), тож
+  // перевірку треба повторювати на кожен фокус, інакше крапка не зникає після
+  // прочитання новин (lastSeenNewsAt у БД вже оновився, а стан тут — ще ні).
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+
+      (async () => {
+        const [region, lastSeenAt] = await Promise.all([getRegion(), getSetting('lastSeenNewsAt')]);
+        const news = await fetchNewsForUser(region);
+        if (cancelled) return;
+        const unread = lastSeenAt
+          ? news.some((item) => (item.publishedAt ?? '') > lastSeenAt)
+          : news.length > 0;
+        setHasUnreadNews(unread);
+      })();
+
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
 
   // Порожній стан рендериться без ScrollView — без цього compactBar лишався б
   // "проскроленим" (видимим) зі старого scrollY, а hero не з'являвся б, поки
@@ -112,10 +142,10 @@ export const Home = ({ navigation }: TabScreenProps<'home'>) => {
           <Text style={styles.eyebrow}>{strings.home.eyebrow}</Text>
           <Text style={styles.title}>{strings.home.title}</Text>
         </View>
-        <View style={styles.bell}>
-          <NotificationIcon width={uScale(18)} height={uScale(18)} color={colors.text} />
-          <View style={styles.bellDot} />
-        </View>
+        <Pressable style={styles.bell} onPress={() => navigation.navigate('News')}>
+          <FontAwesome name="newspaper-o" size={uScale(16)} color={colors.text} />
+          {hasUnreadNews ? <View style={styles.bellDot} /> : null}
+        </Pressable>
       </View>
 
       <View style={styles.body}>

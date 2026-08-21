@@ -14,6 +14,7 @@ export type RootStackParamList = {
   Add: undefined;
   Confirm: { uri?: string; source?: 'camera' | 'gallery' } | undefined;
   SubscriptionDetail: { id: string };
+  News: undefined;
   Paywall: undefined;
   DevOcrSpike: undefined;
 };
