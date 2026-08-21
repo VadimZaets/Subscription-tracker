@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import CrossIcon from '@/assets/icon/cross.svg';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { Screen, SCREEN_PADDING_H } from '@/components/Screen';
 import { strings } from '@/localization/strings';
@@ -30,7 +31,7 @@ export const Paywall = ({ navigation }: RootStackScreenProps<'Paywall'>) => {
     <Screen padded={false} style={styles.pad}>
       <View style={styles.topbar}>
         <Pressable onPress={handleClose} style={styles.closeBtn}>
-          <Ionicons name="close" size={uScale(15)} color={colors.text} />
+          <CrossIcon width={uScale(15)} height={uScale(15)} color={colors.text} />
         </Pressable>
       </View>
 

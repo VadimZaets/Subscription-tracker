@@ -12,10 +12,12 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { RootNavigator } from '@/navigation/RootNavigator';
 import { RootStackParamList } from '@/navigation/types';
 import { DatabaseProvider } from '@/providers/DatabaseProvider';
+import { NotificationProvider } from '@/providers/NotificationProvider';
 import { useTheme } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -60,12 +62,16 @@ const App = () => {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <DatabaseProvider onReady={handleDbReady}>
-        <StatusBar style="light" />
-        <NavigationContainer linking={linking}>
-          <RootNavigator />
-        </NavigationContainer>
-      </DatabaseProvider>
+      <SafeAreaProvider>
+        <DatabaseProvider onReady={handleDbReady}>
+          <NotificationProvider>
+            <StatusBar style="light" />
+            <NavigationContainer linking={linking}>
+              <RootNavigator />
+            </NavigationContainer>
+          </NotificationProvider>
+        </DatabaseProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 };

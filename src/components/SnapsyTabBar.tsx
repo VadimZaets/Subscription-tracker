@@ -1,6 +1,6 @@
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FC, useMemo } from 'react';
+import { FC, useCallback, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { SvgProps } from 'react-native-svg';
@@ -9,15 +9,16 @@ import HomeIcon from '@/assets/icon/tabBar/home.svg';
 import PlusIcon from '@/assets/icon/tabBar/plus.svg';
 import SettingsIcon from '@/assets/icon/tabBar/settings.svg';
 import { TAB_BAR_BOTTOM, TAB_BAR_HEIGHT, TAB_BAR_INSET_H } from '@/components/tabBar.constants';
+import { haptics } from '@/lib/haptics';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
 import { uScale } from '@/utils/uScale';
 
 const ADD_ROUTE = 'add-action';
 const TRANSITION_MS = 220;
 
-const TAB_ICONS: Record<string, FC<SvgProps>> = {
-  home: HomeIcon,
-  settings: SettingsIcon,
+const TAB_ICONS: Record<string, { Icon: FC<SvgProps>; size: number }> = {
+  home: { Icon: HomeIcon, size: 18 },
+  settings: { Icon: SettingsIcon, size: 20 },
 };
 
 type SnapsyTabBarProps = BottomTabBarProps & {
@@ -54,6 +55,11 @@ export const SnapsyTabBar = ({
     opacity: withTiming(actionOpen ? 1 : 0, { duration: TRANSITION_MS }),
   }));
 
+  const handleToggleAction = useCallback(() => {
+    haptics('medium');
+    onToggleAction();
+  }, [onToggleAction]);
+
   return (
     <View style={styles.wrap} pointerEvents="box-none">
       <Animated.View style={[styles.pill, pillStyle]} pointerEvents="none" />
@@ -64,7 +70,7 @@ export const SnapsyTabBar = ({
 
           if (route.name === ADD_ROUTE) {
             return (
-              <Pressable key={route.key} onPress={onToggleAction} style={styles.item}>
+              <Pressable key={route.key} onPress={handleToggleAction} style={styles.item}>
                 <View style={styles.bubble}>
                   <Animated.View style={[StyleSheet.absoluteFill, gradientStyle]}>
                     <LinearGradient
@@ -94,15 +100,15 @@ export const SnapsyTabBar = ({
             if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
           };
 
-          const TabIcon = TAB_ICONS[route.name];
+          const tabIcon = TAB_ICONS[route.name];
 
           return (
             <Animated.View key={route.key} style={[styles.item, sideItemsStyle]}>
               <Pressable onPress={handlePress} disabled={actionOpen} style={styles.itemPressable}>
-                {TabIcon ? (
-                  <TabIcon
-                    width={uScale(18)}
-                    height={uScale(18)}
+                {tabIcon ? (
+                  <tabIcon.Icon
+                    width={uScale(tabIcon.size)}
+                    height={uScale(tabIcon.size)}
                     color={focused ? colors.text : colors.textFaint}
                   />
                 ) : null}

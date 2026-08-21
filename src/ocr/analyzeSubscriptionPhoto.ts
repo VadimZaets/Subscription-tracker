@@ -1,6 +1,7 @@
 import { EncodingType, readAsStringAsync } from 'expo-file-system/legacy';
 
 import { parseIsoDate } from '@/lib/format/date';
+import { Category } from '@/types/category.types';
 import { BillingCycle, CurrencyCode } from '@/types/subscription.types';
 
 /** Локальна IP-адреса Mac у Docker Desktop — працює, лише поки телефон і Mac в
@@ -15,11 +16,20 @@ export type AnalyzedSubscription = {
   currency: CurrencyCode;
   cycle: BillingCycle;
   chargedAt: Date | null;
+  category: Category;
   confidence: 'high' | 'low';
 };
 
 const KNOWN_CURRENCIES: CurrencyCode[] = ['UAH', 'USD', 'EUR'];
 const KNOWN_CYCLES: BillingCycle[] = ['weekly', 'monthly', 'yearly', 'once'];
+const KNOWN_CATEGORIES: Category[] = [
+  'streaming',
+  'software',
+  'fitness',
+  'games',
+  'cloud',
+  'other',
+];
 
 const asStringOrNull = (value: unknown): string | null =>
   typeof value === 'string' && value.trim().length > 0 && value.trim().toLowerCase() !== 'null'
@@ -32,6 +42,9 @@ const asCurrency = (value: unknown): CurrencyCode =>
 const asCycle = (value: unknown): BillingCycle =>
   KNOWN_CYCLES.includes(value as BillingCycle) ? (value as BillingCycle) : 'monthly';
 
+const asCategory = (value: unknown): Category =>
+  KNOWN_CATEGORIES.includes(value as Category) ? (value as Category) : 'other';
+
 const asChargedAt = (value: unknown): Date | null => {
   const str = asStringOrNull(value);
   return str && DATE_RE.test(str) ? parseIsoDate(str) : null;
@@ -43,8 +56,28 @@ const toAnalyzedSubscription = (item: Record<string, unknown>): AnalyzedSubscrip
   currency: asCurrency(item.currency),
   cycle: asCycle(item.cycle),
   chargedAt: asChargedAt(item.chargedAtDate),
+  category: asCategory(item.category),
   confidence: item.confidence === 'high' ? 'high' : 'low',
 });
+
+/** Модель на батч-скріншотах іноді "бачить" один і той самий рядок двічі
+ *  (той самий мерчант+сума+цикл+дата) — відсіюємо повні дублікати, лишаючи
+ *  перше входження, щоб у Confirm не з'являлись дві однакові картки. */
+const dedupeAnalyzed = (items: AnalyzedSubscription[]): AnalyzedSubscription[] => {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = [
+      item.merchantName.trim().toLowerCase(),
+      item.amount,
+      item.currency,
+      item.cycle,
+      item.chargedAt?.toISOString() ?? '',
+    ].join('|');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
 
 /**
  * Повне AI-розпізнавання фото підписки/підписок: шле фото (не текст) на
@@ -73,5 +106,5 @@ export const analyzeSubscriptionPhoto = async (uri: string): Promise<AnalyzedSub
   console.log('[analyzeSubscriptionPhoto] raw response:', JSON.stringify(data, null, 2));
 
   const subscriptions: unknown = Array.isArray(data.subscriptions) ? data.subscriptions : [];
-  return (subscriptions as Record<string, unknown>[]).map(toAnalyzedSubscription);
+  return dedupeAnalyzed((subscriptions as Record<string, unknown>[]).map(toAnalyzedSubscription));
 };

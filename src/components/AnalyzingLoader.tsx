@@ -10,6 +10,7 @@ import Animated, {
 import { Path, Svg } from 'react-native-svg';
 
 import { ANALYZER_ICONS } from '@/assets/icon/analyzer';
+import { haptics } from '@/lib/haptics';
 import { strings } from '@/localization/strings';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
 import { uFont, uScale } from '@/utils/uScale';
@@ -20,8 +21,10 @@ const STEP_INTERVAL_MS = 1900;
 const CIRCLE_SIZE = 180;
 const ICON_SIZE = 88;
 const CHECK_SIZE = 56;
-// Довжина шляху "M20 6L9 17L4 12" (24×24 viewBox): √242 + √50 ≈ 22.6,
-// округлено з запасом — для stroke-dasharray/dashoffset ефекту "малювання".
+// Шлях розвернуто відносно "звичайного" M20 6L9 17L4 12 — так, щоб
+// stroke-dashoffset малював у природному напрямку: короткий штрих знизу-зліва
+// спершу, потім довгий угору-вправо (як пишуть галочку від руки), а не навпаки.
+// Довжина шляху (24×24 viewBox): √242 + √50 ≈ 22.6, округлено з запасом.
 const CHECK_PATH_LENGTH = 24;
 const CHECK_DRAW_MS = 380;
 
@@ -61,6 +64,7 @@ export const AnalyzingLoader = ({ done }: AnalyzingLoaderProps) => {
 
   useEffect(() => {
     if (done) {
+      haptics('success');
       checkDraw.value = withTiming(1, {
         duration: CHECK_DRAW_MS,
         easing: Easing.out(Easing.cubic),
@@ -111,7 +115,9 @@ export const AnalyzingLoader = ({ done }: AnalyzingLoaderProps) => {
     if (done) return;
     const steps = strings.confirm.analyzingSteps;
     const timer = setInterval(() => {
-      setStepIndex((current) => (current + 1) % steps.length);
+      // Не по колу — доходимо до "Майже готово…" і лишаємось на ньому. Якщо
+      // тут написано "майже готово", то назад до "аналізуємо" вертатись не можна.
+      setStepIndex((current) => Math.min(current + 1, steps.length - 1));
     }, STEP_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [done]);
@@ -133,7 +139,7 @@ export const AnalyzingLoader = ({ done }: AnalyzingLoaderProps) => {
         {done ? (
           <Svg width={uScale(CHECK_SIZE)} height={uScale(CHECK_SIZE)} viewBox="0 0 24 24">
             <AnimatedPath
-              d="M20 6L9 17L4 12"
+              d="M4 12L9 17L20 6"
               stroke="#FFFFFF"
               strokeWidth={2.4}
               strokeLinecap="round"

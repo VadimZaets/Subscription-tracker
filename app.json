@@ -15,7 +15,8 @@
         }
       ],
       "expo-sqlite",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-image"
     ],
     "android": {
       "package": "com.anonymous.snapsy"

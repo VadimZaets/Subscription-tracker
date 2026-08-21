@@ -44,7 +44,9 @@ export const strings = {
     timelineTitle: 'Активні підписки',
     timelineCount: (count: number) => `${count} усього`,
     yearlySummary: (yearlyAmount: string) => `≈ ${yearlyAmount} на рік`,
-    emptyTitle: 'Ще немає підписок',
+    emptyTitle: 'Тут поки порожньо',
+    emptySub: 'Додай першу підписку — сфотографуй чек або скріншот, і ми розберемось самі.',
+    emptyCta: 'Натисни, щоб додати',
   },
   settings: {
     title: 'Налаштування',
@@ -129,18 +131,31 @@ export const strings = {
     saveBatch: (count: number) => `Зберегти обрані (${count})`,
     included: 'Додати',
     excluded: 'Пропустити',
+    notRecognizedCamera:
+      'Не схоже на чек чи інвойс — сфотографуйте чек, інвойс або екран підписки.',
+    notRecognizedGallery:
+      'Не схоже на чек чи інвойс — завантажте фото чека, інвойсу або екрана підписки.',
+    allDuplicates: (count: number) =>
+      count === 1 ? 'Ця підписка вже є у списку' : 'Ці підписки вже є у списку',
+    someDuplicatesSkipped: (count: number) =>
+      count === 1 ? 'Пропущено 1 — вже є у списку' : `Пропущено ${count} — вже є у списку`,
   },
   subscriptionDetail: {
     idPrefix: 'id: ',
     nextChargePrefix: 'Наступне списання — ',
     cancel: 'Скасувати',
-    pause: 'Пауза',
-    resume: 'Відновити',
-    historyTitle: 'Історія платежів',
-    historyEmpty: 'Ще немає збережених платежів',
+    delete: 'Видалити',
     remindersTitle: 'Нагадування',
     reminderRow: 'За 3 дні до списання',
     notFound: 'Підписку не знайдено',
+    cancelledCheckTitle: 'Скасували підписку?',
+    cancelledCheckMessage: 'Якщо так — приберемо її зі списку.',
+    cancelledCheckYes: 'Так, скасував(ла)',
+    cancelledCheckNo: 'Ще ні',
+    deleteConfirmTitle: 'Видалити цю підписку?',
+    deleteConfirmMessage: 'Її можна буде додати знову, якщо передумаєш.',
+    deleteConfirmYes: 'Видалити',
+    deleteConfirmNo: 'Скасувати',
   },
   paywall: {
     eyebrow: 'SNAPSY PRO',

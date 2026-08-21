@@ -12,7 +12,7 @@ export type RootStackParamList = {
   Splash: undefined;
   Tabs: undefined;
   Add: undefined;
-  Confirm: { uri?: string } | undefined;
+  Confirm: { uri?: string; source?: 'camera' | 'gallery' } | undefined;
   SubscriptionDetail: { id: string };
   Paywall: undefined;
   DevOcrSpike: undefined;

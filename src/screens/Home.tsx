@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite/query';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Extrapolation,
@@ -10,6 +10,7 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 
+import ArrowToPlusIcon from '@/assets/icon/arrow-to-plus.svg';
 import NotificationIcon from '@/assets/icon/notification.svg';
 import { Screen, SCREEN_PADDING_H } from '@/components/Screen';
 import { TAB_BAR_CLEARANCE } from '@/components/tabBar.constants';
@@ -51,6 +52,13 @@ export const Home = ({ navigation }: TabScreenProps<'home'>) => {
   const monthlyTotalLabel = formatMoney(monthlyTotal, 'UAH');
   const yearlySummary = strings.home.yearlySummary(formatMoney(monthlyTotal * 12, 'UAH'));
   const nextCharge = rows[0];
+
+  // Порожній стан рендериться без ScrollView — без цього compactBar лишався б
+  // "проскроленим" (видимим) зі старого scrollY, а hero не з'являвся б, поки
+  // не почнеш скролити заново (нічим, бо списку вже нема).
+  useEffect(() => {
+    if (rows.length === 0) scrollY.value = 0;
+  }, [rows.length, scrollY]);
 
   const handleScroll = useAnimatedScrollHandler((event) => {
     scrollY.value = event.contentOffset.y;
@@ -111,56 +119,73 @@ export const Home = ({ navigation }: TabScreenProps<'home'>) => {
       </View>
 
       <View style={styles.body}>
-        <Animated.ScrollView
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-        >
-          {nextCharge ? (
-            <Animated.View style={heroStyle}>
-              <Viewfinder
-                label={strings.home.thisMonth}
-                amount={monthlyTotalLabel}
-                sub={yearlySummary}
-              />
-            </Animated.View>
-          ) : (
+        {rows.length === 0 ? (
+          <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>{strings.home.emptyTitle}</Text>
-          )}
-
-          <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>{strings.home.timelineTitle}</Text>
-            <Text style={styles.sectionLink}>{strings.home.timelineCount(rows.length)}</Text>
+            <Text style={styles.emptySub}>{strings.home.emptySub}</Text>
           </View>
-
-          <Timeline>
-            {rows.map((row, index) => (
-              <Pressable
-                key={row.id}
-                onPress={() => navigation.navigate('SubscriptionDetail', { id: row.id })}
-              >
-                <TimelineRow
-                  date={row.date}
-                  when={row.when}
-                  name={row.name}
-                  category={row.category}
-                  categoryLabel={strings.categories[row.category]}
-                  categoryColor={row.categoryColor}
-                  domain={row.domain}
-                  price={row.price}
-                  cycle={row.cycle}
-                  isLast={index === rows.length - 1}
+        ) : (
+          <Animated.ScrollView
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            contentContainerStyle={styles.scroll}
+            showsVerticalScrollIndicator={false}
+          >
+            {nextCharge ? (
+              <Animated.View style={heroStyle}>
+                <Viewfinder
+                  label={strings.home.thisMonth}
+                  amount={monthlyTotalLabel}
+                  sub={yearlySummary}
                 />
-              </Pressable>
-            ))}
-          </Timeline>
-        </Animated.ScrollView>
+              </Animated.View>
+            ) : null}
+
+            <View style={styles.sectionHead}>
+              <Text style={styles.sectionTitle}>{strings.home.timelineTitle}</Text>
+              <Text style={styles.sectionLink}>{strings.home.timelineCount(rows.length)}</Text>
+            </View>
+
+            <Timeline>
+              {rows.map((row, index) => (
+                <Pressable
+                  key={row.id}
+                  onPress={() => navigation.navigate('SubscriptionDetail', { id: row.id })}
+                >
+                  <TimelineRow
+                    date={row.date}
+                    when={row.when}
+                    name={row.name}
+                    category={row.category}
+                    categoryLabel={strings.categories[row.category]}
+                    categoryColor={row.categoryColor}
+                    domain={row.domain}
+                    price={row.price}
+                    cycle={row.cycle}
+                    isLast={index === rows.length - 1}
+                  />
+                </Pressable>
+              ))}
+            </Timeline>
+          </Animated.ScrollView>
+        )}
 
         <Animated.View style={[styles.compactBar, compactStyle]} pointerEvents="none">
           <Text style={styles.compactLabel}>{strings.home.thisMonth}</Text>
           <Text style={styles.compactAmount}>{monthlyTotalLabel}</Text>
         </Animated.View>
+
+        {rows.length === 0 ? (
+          <View style={styles.emptyCtaWrap} pointerEvents="none">
+            <Text style={styles.emptyCtaText}>{strings.home.emptyCta}</Text>
+            <ArrowToPlusIcon
+              width={uScale(72)}
+              height={uScale(72)}
+              color={colors.textDim}
+              style={styles.emptyCtaArrow}
+            />
+          </View>
+        ) : null}
       </View>
     </Screen>
   );
@@ -177,7 +202,10 @@ const makeStyles = (colors: ThemeColors) =>
       paddingHorizontal: uScale(SCREEN_PADDING_H),
       paddingBottom: uScale(18),
       zIndex: 2,
-      backgroundColor: colors.bg,
+      // Прозорий — інакше суцільний colors.bg дає видиму «полоску» на межі з
+      // градієнтом TopBackground. compactBar нижче лишається непрозорим
+      // навмисно: він перекриває скрольований контент і мусить його ховати.
+      backgroundColor: colors.transparent,
     },
     eyebrow: {
       fontFamily: fontFamilies.bold,
@@ -260,11 +288,45 @@ const makeStyles = (colors: ThemeColors) =>
     },
     sectionTitle: { fontFamily: fontFamilies.extraBold, fontSize: uFont(16), color: colors.text },
     sectionLink: { fontFamily: fontFamilies.bold, fontSize: uFont(12.5), color: colors.accent2 },
+    emptyState: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: uScale(SCREEN_PADDING_H + 12),
+      paddingBottom: uScale(TAB_BAR_CLEARANCE),
+    },
     emptyTitle: {
-      fontFamily: fontFamilies.semiBold,
+      fontFamily: fontFamilies.extraBold,
+      fontSize: uFont(19),
+      color: colors.text,
+      textAlign: 'center',
+    },
+    emptySub: {
+      fontFamily: fontFamilies.medium,
       fontSize: uFont(14),
+      lineHeight: uFont(20),
       color: colors.textDim,
       textAlign: 'center',
-      paddingVertical: uScale(30),
+      marginTop: uScale(10),
+      maxWidth: uScale(260),
+    },
+    // Стрілка від тексту до кнопки «+» таб-бара — та сама горизонтальна
+    // позиція, що й середній таб (add-action), тому right тут не потрібен,
+    // блок центрований по ширині екрана.
+    emptyCtaWrap: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: uScale(TAB_BAR_CLEARANCE + 20),
+      alignItems: 'center',
+    },
+    emptyCtaText: {
+      fontFamily: fontFamilies.bold,
+      fontSize: uFont(13.5),
+      color: colors.textDim,
+      marginBottom: uScale(12),
+    },
+    emptyCtaArrow: {
+      transform: [{ rotate: '185deg' }],
     },
   });

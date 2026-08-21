@@ -3,6 +3,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import CrossIcon from '@/assets/icon/cross.svg';
 import { ChipGroup } from '@/components/form/ChipGroup';
 import { LabeledInput } from '@/components/form/LabeledInput';
 import { PillGroup } from '@/components/form/PillGroup';
@@ -79,7 +80,7 @@ export const Add = ({ navigation }: RootStackScreenProps<'Add'>) => {
     <Screen padded={false} style={styles.pad}>
       <View style={styles.topbar}>
         <Pressable onPress={handleClose} style={styles.closeBtn}>
-          <Ionicons name="close" size={uScale(15)} color={colors.text} />
+          <CrossIcon width={uScale(15)} height={uScale(15)} color={colors.text} />
         </Pressable>
         <Text style={styles.title}>{strings.add.title}</Text>
         <View style={styles.closeBtnSpacer} />

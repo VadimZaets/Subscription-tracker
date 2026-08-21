@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite/query';
-import { useCallback, useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import TrashIcon from '@/assets/icon/trash.svg';
 import { MerchantLogo } from '@/components/MerchantLogo';
 import { Screen, SCREEN_PADDING_H } from '@/components/Screen';
-import { getSubscriptionById, updateSubscriptionStatus } from '@/db/queries/subscriptions';
+import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
+import { deleteSubscription, getSubscriptionById } from '@/db/queries/subscriptions';
 import { openSubscriptionSettings } from '@/lib/appStore';
 import { formatCycleAdverb } from '@/lib/format/cycle';
 import { formatShortDate, formatWhen } from '@/lib/format/date';
@@ -26,23 +28,56 @@ export const SubscriptionDetail = ({
   const { data: rows } = useLiveQuery(getSubscriptionById(id));
   const sub = rows[0];
 
+  const [showCancelCheck, setShowCancelCheck] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // true між моментом, коли ми вивели людину на сайт скасування, і поверненням
+  // у застосунок — лише тоді наступний "стан активний" має відкрити питання.
+  const awaitingCancelCheck = useRef(false);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active' && awaitingCancelCheck.current) {
+        awaitingCancelCheck.current = false;
+        setShowCancelCheck(true);
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
   const handleBack = useCallback(() => {
     navigation.goBack();
   }, [navigation]);
 
   const handleCancel = useCallback(() => {
     if (!sub) return;
-    // Drizzle-запити ледачі — виконуються лише коли їх await/then/catch-нути.
-    updateSubscriptionStatus(sub.id, 'cancelled').catch(console.error);
-    openSubscriptionSettings();
+
+    // Відомий мерчант з прямим посиланням на керування підпискою (не App
+    // Store) — ведемо туди; інакше єдиний чесний варіант — системний екран
+    // Apple (сторонній застосунок не може скасувати App Store-підписку сам).
+    // sub.cancelUrl (від AI при збереженні) має пріоритет над каталогом.
+    const cancelUrl = sub.cancelUrl ?? findMerchant(sub.name)?.cancelUrl;
+    awaitingCancelCheck.current = true;
+
+    const open = cancelUrl ? Linking.openURL(cancelUrl) : openSubscriptionSettings();
+    Promise.resolve(open).catch(() => {
+      if (cancelUrl) openSubscriptionSettings();
+    });
   }, [sub]);
 
-  const handlePause = useCallback(() => {
-    if (!sub) return;
-    updateSubscriptionStatus(sub.id, sub.status === 'paused' ? 'active' : 'paused').catch(
-      console.error,
-    );
+  const handleCancelCheckYes = useCallback(() => {
+    setShowCancelCheck(false);
+    if (sub) deleteSubscription(sub.id).catch(console.error);
   }, [sub]);
+
+  const handleCancelCheckNo = useCallback(() => {
+    setShowCancelCheck(false);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(() => {
+    setShowDeleteConfirm(false);
+    if (sub) deleteSubscription(sub.id).catch(console.error);
+    navigation.goBack();
+  }, [sub, navigation]);
 
   if (!sub) {
     return (
@@ -62,12 +97,14 @@ export const SubscriptionDetail = ({
   const now = new Date();
 
   return (
-    <Screen padded={false} style={styles.pad}>
+    <Screen padded={false} style={styles.pad} gradientTint={categoryColor}>
       <View style={styles.topbar}>
         <Pressable onPress={handleBack} style={styles.navBtn}>
           <Ionicons name="chevron-back" size={uScale(16)} color={colors.text} />
         </Pressable>
-        <View style={styles.navBtn} />
+        <Pressable onPress={() => setShowDeleteConfirm(true)} style={styles.navBtn}>
+          <TrashIcon width={uScale(16)} height={uScale(16)} color={colors.red} />
+        </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -105,18 +142,7 @@ export const SubscriptionDetail = ({
               {strings.subscriptionDetail.cancel}
             </Text>
           </Pressable>
-          <Pressable onPress={handlePause} style={[styles.actBtn, styles.actBtnNeutral]}>
-            <Ionicons name="pause" size={uScale(15)} color={colors.text} />
-            <Text style={styles.actLabel}>
-              {sub.status === 'paused'
-                ? strings.subscriptionDetail.resume
-                : strings.subscriptionDetail.pause}
-            </Text>
-          </Pressable>
         </View>
-
-        <Text style={styles.sectionTitle}>{strings.subscriptionDetail.historyTitle}</Text>
-        <Text style={styles.historyEmpty}>{strings.subscriptionDetail.historyEmpty}</Text>
 
         <Text style={styles.sectionTitle}>{strings.subscriptionDetail.remindersTitle}</Text>
         <View style={styles.reminderRow}>
@@ -126,6 +152,26 @@ export const SubscriptionDetail = ({
           </View>
         </View>
       </ScrollView>
+
+      <ConfirmSheet
+        visible={showCancelCheck}
+        title={strings.subscriptionDetail.cancelledCheckTitle}
+        message={strings.subscriptionDetail.cancelledCheckMessage}
+        confirmLabel={strings.subscriptionDetail.cancelledCheckYes}
+        cancelLabel={strings.subscriptionDetail.cancelledCheckNo}
+        onConfirm={handleCancelCheckYes}
+        onCancel={handleCancelCheckNo}
+      />
+
+      <ConfirmSheet
+        visible={showDeleteConfirm}
+        title={strings.subscriptionDetail.deleteConfirmTitle}
+        message={strings.subscriptionDetail.deleteConfirmMessage}
+        confirmLabel={strings.subscriptionDetail.deleteConfirmYes}
+        cancelLabel={strings.subscriptionDetail.deleteConfirmNo}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </Screen>
   );
 };
@@ -224,19 +270,12 @@ const makeStyles = (colors: ThemeColors) =>
       borderColor: colors.borderGlass,
     },
     actBtnBad: { backgroundColor: `${colors.red}24`, borderColor: colors.transparent },
-    actBtnNeutral: { backgroundColor: colors.glass },
     actLabel: { fontFamily: fontFamilies.bold, fontSize: uFont(13.5), color: colors.text },
     sectionTitle: {
       fontFamily: fontFamilies.extraBold,
       fontSize: uFont(15),
       color: colors.text,
       marginBottom: uScale(13),
-    },
-    historyEmpty: {
-      fontFamily: fontFamilies.medium,
-      fontSize: uFont(13),
-      color: colors.textFaint,
-      marginBottom: uScale(26),
     },
     reminderRow: {
       flexDirection: 'row',

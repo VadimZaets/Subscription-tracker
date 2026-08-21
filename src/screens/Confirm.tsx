@@ -4,25 +4,28 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 
+import CrossIcon from '@/assets/icon/cross.svg';
 import { AnalyzingLoader } from '@/components/AnalyzingLoader';
 import { LabeledInput } from '@/components/form/LabeledInput';
 import { PillGroup } from '@/components/form/PillGroup';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { Screen, SCREEN_PADDING_H } from '@/components/Screen';
-import { createSubscription } from '@/db/queries/subscriptions';
+import { createSubscription, findActiveDuplicate } from '@/db/queries/subscriptions';
 import { computeNextChargeAt } from '@/lib/billing/nextCharge';
 import { formatShortDate, toLocalIsoDate } from '@/lib/format/date';
 import { strings } from '@/localization/strings';
 import { RootStackScreenProps } from '@/navigation/types';
 import { analyzeSubscriptionPhoto } from '@/ocr/analyzeSubscriptionPhoto';
-import { lookupMerchantDomain } from '@/ocr/lookupMerchantDomain';
+import { lookupMerchantInfo } from '@/ocr/lookupMerchantDomain';
 // ТИМЧАСОВО вимкнено разом з локальним OCR-шляхом нижче — див. коментар у useEffect.
 // import { findMerchant } from '@/ocr/merchants.catalog';
 // import { parseAppStoreScreenshot } from '@/ocr/parseAppStoreScreenshot';
 import { FieldConfidence } from '@/ocr/parseReceipt';
+import { useNotification } from '@/providers/NotificationProvider';
 // import { parseReceipt } from '@/ocr/parseReceipt';
 // import { recognizeText } from '@/ocr/recognizeText';
 import { fontFamilies, ThemeColors, useTheme } from '@/theme';
+import { Category } from '@/types/category.types';
 import { BillingCycle, CurrencyCode, SubscriptionSource } from '@/types/subscription.types';
 import { uFont, uScale } from '@/utils/uScale';
 
@@ -48,6 +51,8 @@ type EditableItem = {
   amountConfidence: FieldConfidence | null;
   currency: CurrencyCode;
   cycle: BillingCycle;
+  /** З AI-розпізнавання; catalog.ts за (відредагованою) назвою на save має пріоритет. */
+  category: Category;
   /** Дата зі старого інвойсу/скріна — не показуємо напряму, лише як якір для
    *  computeNextChargeAt (людина може сфотографувати чек багатомісячної давнини). */
   chargedAt: Date;
@@ -67,12 +72,12 @@ const nextKey = () => `item-${keySeq++}`;
 export const Confirm = ({ route, navigation }: RootStackScreenProps<'Confirm'>) => {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { show: showNotification } = useNotification();
   const uri = route.params?.uri;
+  const source = route.params?.source;
 
   const [loading, setLoading] = useState(Boolean(uri));
   const [analyzingDone, setAnalyzingDone] = useState(false);
-  const [ocrError, setOcrError] = useState<string | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const [items, setItems] = useState<EditableItem[]>([]);
   const [datePickerKey, setDatePickerKey] = useState<string | null>(null);
   const [pendingDate, setPendingDate] = useState<Date | null>(null);
@@ -154,6 +159,20 @@ export const Confirm = ({ route, navigation }: RootStackScreenProps<'Confirm'>) 
     const startedAt = Date.now();
     analyzeSubscriptionPhoto(uri)
       .then(async (analyzedList) => {
+        if (analyzedList.length === 0) {
+          // Сервіс сам вирішив, що на фото немає підписки/чека/інвойсу —
+          // повідомляємо конкретно під дію (фото/завантаження) і виходимо.
+          showNotification({
+            type: 'error',
+            message:
+              source === 'gallery'
+                ? strings.confirm.notRecognizedGallery
+                : strings.confirm.notRecognizedCamera,
+          });
+          navigation.goBack();
+          return;
+        }
+
         // Сервіс сам повертає масив — один елемент для чека, кілька для
         // скріншота "Підписки" App/Play Store; UI однаково рендерить обидва
         // випадки через isBatch (items.length > 1).
@@ -168,25 +187,34 @@ export const Confirm = ({ route, navigation }: RootStackScreenProps<'Confirm'>) 
           amountConfidence: analyzed.confidence,
           currency: analyzed.currency,
           cycle: analyzed.cycle,
+          category: analyzed.category,
           chargedAt: analyzed.chargedAt ?? now,
           chargedAtConfidence: analyzed.chargedAt ? analyzed.confidence : null,
           selected: true,
           source: 'receipt' as const,
         }));
         setItems(batchItems);
-        setAnalyzingDone(true);
-        // Лоадер має бути видимим щонайменше MIN_LOADER_MS сумарно (включно з
-        // "Готово!"), навіть якщо сервіс відповів швидше — інакше анімація
-        // просто блимає й не встигає проявитись.
+        // Іконки крутяться щонайменше MIN_LOADER_MS, навіть якщо сервіс
+        // відповів швидше — "Готово" з'являється лише після цього, не одразу
+        // по відповіді, інакше анімація просто не встигає проявитись.
         const elapsed = Date.now() - startedAt;
-        const remaining = Math.max(MIN_LOADER_MS - elapsed, DONE_HOLD_MS);
-        await new Promise((resolve) => setTimeout(resolve, remaining));
+        const iconsRemaining = Math.max(MIN_LOADER_MS - elapsed, 0);
+        await new Promise((resolve) => setTimeout(resolve, iconsRemaining));
+
+        setAnalyzingDone(true);
+        // Тримаємо "Готово" на екрані ще мить, а тоді Confirm ховає лоадер
+        // плавним fade-out (styles.flexFill Animated.View у рендері нижче).
+        await new Promise((resolve) => setTimeout(resolve, DONE_HOLD_MS));
       })
       .catch((error) => {
-        setOcrError(error instanceof Error ? error.message : String(error));
+        showNotification({
+          type: 'error',
+          message: error instanceof Error ? error.message : String(error),
+        });
+        navigation.goBack();
       })
       .finally(() => setLoading(false));
-  }, [uri]);
+  }, [uri, source, navigation, showNotification]);
 
   const isBatch = items.length > 1;
   const selectedItems = items.filter((item) => item.selected);
@@ -236,23 +264,38 @@ export const Confirm = ({ route, navigation }: RootStackScreenProps<'Confirm'>) 
   const handleSave = useCallback(async () => {
     if (!canSave || selectedItems.length === 0) return;
 
-    setSaveError(null);
     const now = new Date();
     try {
+      let savedCount = 0;
+      let duplicateCount = 0;
+
       for (const item of selectedItems) {
         const trimmedName = item.name.trim();
+        const amount = Number(item.amountText.replace(',', '.'));
+
+        // Не додаємо те, що вже є активним у списку (та сама назва + сума) —
+        // людина могла ще раз сфотографувати той самий чек чи скрін підписок.
+        const duplicate = await findActiveDuplicate(trimmedName, amount);
+        if (duplicate) {
+          duplicateCount += 1;
+          continue;
+        }
+
         // ТИМЧАСОВО: локальний каталог доменів (findMerchant) вимкнено — домен
-        // завжди йде через сервіс, щоб перевірити його ізольовано.
+        // і cancelUrl завжди йдуть через сервіс, щоб перевірити його ізольовано.
         // Ім'я мерчанта тепер підтверджене людиною (вона могла його виправити
-        // в полі форми) — саме тут, а не раніше, безпечно питати AI про домен.
-        const domain = item.domain ?? (await lookupMerchantDomain(trimmedName).catch(() => null));
+        // в полі форми) — саме тут, а не раніше, безпечно питати AI про них.
+        const info = item.domain
+          ? { domain: item.domain, cancelUrl: null }
+          : await lookupMerchantInfo(trimmedName).catch(() => ({ domain: null, cancelUrl: null }));
 
         await createSubscription(
           {
             name: trimmedName,
-            category: 'other',
-            domain,
-            amount: Number(item.amountText.replace(',', '.')),
+            category: item.category,
+            domain: info.domain,
+            cancelUrl: info.cancelUrl,
+            amount,
             currency: item.currency,
             cycle: item.cycle,
             firstChargeAt: item.chargedAt,
@@ -260,21 +303,44 @@ export const Confirm = ({ route, navigation }: RootStackScreenProps<'Confirm'>) 
           },
           now,
         );
+        savedCount += 1;
       }
+
+      if (savedCount === 0) {
+        showNotification({
+          type: 'warning',
+          message: strings.confirm.allDuplicates(duplicateCount),
+        });
+        navigation.goBack();
+        return;
+      }
+
+      if (duplicateCount > 0) {
+        showNotification({
+          type: 'info',
+          message: strings.confirm.someDuplicatesSkipped(duplicateCount),
+        });
+      }
+
       navigation.popToTop();
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : String(error));
+      showNotification({
+        type: 'error',
+        message: error instanceof Error ? error.message : String(error),
+      });
     }
-  }, [canSave, selectedItems, navigation]);
+  }, [canSave, selectedItems, navigation, showNotification]);
 
   return (
     <Screen padded={false} style={styles.pad}>
       <View style={styles.topbar}>
         <Text style={styles.title}>
-          {isBatch ? strings.confirm.batchTitle(items.length) : strings.confirm.title}
+          {/* "Знайдено N" — лише коли картки вже реально на екрані, не одразу
+              як items заповниться (це стається ще під час лоадера). */}
+          {!loading && isBatch ? strings.confirm.batchTitle(items.length) : strings.confirm.title}
         </Text>
         <Pressable onPress={handleClose} style={styles.closeBtn}>
-          <Ionicons name="close" size={uScale(15)} color={colors.text} />
+          <CrossIcon width={uScale(15)} height={uScale(15)} color={colors.text} />
         </Pressable>
       </View>
 
@@ -283,7 +349,6 @@ export const Confirm = ({ route, navigation }: RootStackScreenProps<'Confirm'>) 
           <AnalyzingLoader done={analyzingDone} />
         </Animated.View>
       ) : null}
-      {ocrError ? <Text style={styles.error}>{ocrError}</Text> : null}
 
       {!loading && items.length > 0 ? (
         <Animated.View style={styles.flexFill} entering={FadeIn.duration(320)}>
@@ -383,7 +448,6 @@ export const Confirm = ({ route, navigation }: RootStackScreenProps<'Confirm'>) 
           </ScrollView>
 
           <View style={styles.bottom}>
-            {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
             <PrimaryButton
               label={
                 isBatch ? strings.confirm.saveBatch(selectedItems.length) : strings.confirm.save
@@ -457,13 +521,6 @@ const makeStyles = (colors: ThemeColors) =>
     },
     scroll: { paddingHorizontal: uScale(SCREEN_PADDING_H), paddingBottom: uScale(24) },
     flexFill: { flex: 1 },
-    error: {
-      textAlign: 'center',
-      fontFamily: fontFamilies.semiBold,
-      fontSize: uFont(12.5),
-      color: colors.red,
-      marginBottom: uScale(14),
-    },
     card: {
       backgroundColor: colors.glass,
       borderWidth: 1,
@@ -506,16 +563,17 @@ const makeStyles = (colors: ThemeColors) =>
       marginBottom: uScale(22),
     },
     dateInput: {
-      alignSelf: 'flex-start',
       backgroundColor: colors.glass,
       borderWidth: 1,
+      width: uScale(100),
+      alignItems: 'center',
       borderColor: colors.borderGlass,
-      borderRadius: uScale(11),
-      paddingVertical: uScale(8),
-      paddingHorizontal: uScale(12),
+      borderRadius: uScale(14),
+      paddingVertical: uScale(12),
+      paddingHorizontal: uScale(14),
       marginBottom: uScale(22),
     },
-    dateInputText: { fontFamily: fontFamilies.bold, fontSize: uFont(13), color: colors.text },
+    dateInputText: { fontFamily: fontFamilies.bold, fontSize: uFont(14.5), color: colors.text },
     currencyPick: {
       width: uScale(50),
       alignItems: 'center',

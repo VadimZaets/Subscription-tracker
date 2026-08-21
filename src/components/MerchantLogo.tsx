@@ -1,5 +1,6 @@
+import { Image } from 'expo-image';
 import { useMemo, useState } from 'react';
-import { Image, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { CategoryBadge } from '@/components/CategoryBadge';
 import { buildLogoUrlByDomain } from '@/lib/logoDev';
@@ -37,7 +38,11 @@ export const MerchantLogo = ({ domain, category, color, size = 42 }: MerchantLog
     <Image
       source={{ uri: buildLogoUrlByDomain(domain, size) }}
       style={styles.image}
-      resizeMode="cover"
+      contentFit="cover"
+      // Пам'ять+диск — інакше кожен ре-рендер (useLiveQuery тригерить їх часто)
+      // може повторно смикати мережу й давати видимий спалах "порожньо → лого".
+      cachePolicy="memory-disk"
+      transition={0}
       onError={() => setFailed(true)}
     />
   );

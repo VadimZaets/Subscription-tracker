@@ -17,6 +17,10 @@ export const subscriptions = sqliteTable('subscriptions', {
   /** З merchants.catalog.ts (точний матч) або від AI-розпізнавання фото —
    *  null, якщо жоден джерело не було впевнене (MerchantLogo падає на бейдж). */
   domain: text('domain'),
+  /** Пряме посилання на керування/скасування підписки в самого мерчанта (не
+   *  App Store) — від AI (lookupMerchantInfo) або merchants.catalog.ts. null —
+   *  SubscriptionDetail падає на системний екран Apple. */
+  cancelUrl: text('cancel_url'),
   amount: real('amount').notNull(),
   currency: text('currency').notNull().$type<CurrencyCode>(),
   fxRate: real('fx_rate').notNull(),

@@ -40,6 +40,7 @@ const makeStyles = (colors: ThemeColors) =>
       paddingHorizontal: uScale(26),
       marginTop: uScale(6),
       marginBottom: uScale(30),
+      backgroundColor: colors.transparent,
     },
     corner: { position: 'absolute', width: uScale(CORNER_SIZE), height: uScale(CORNER_SIZE) },
     cornerTL: {

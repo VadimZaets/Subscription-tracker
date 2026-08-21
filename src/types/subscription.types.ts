@@ -14,6 +14,9 @@ export type Subscription = {
   category: Category;
   /** З merchants.catalog.ts або AI-розпізнавання фото — null, якщо жодне не впевнене. */
   domain: string | null;
+  /** Пряме посилання на керування/скасування підписки в мерчанта — null, якщо
+   *  невідоме (SubscriptionDetail тоді падає на системний екран Apple). */
+  cancelUrl: string | null;
   status: SubscriptionStatus;
   source: SubscriptionSource;
   amount: number;

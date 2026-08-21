@@ -4,21 +4,23 @@ export type MerchantCatalogEntry = {
   name: string;
   category: Category;
   color: string;
-  /** Малими літерами, без діакритики — з чим звіряємо розпізнаний текст. */
   aliases: string[];
-  /** Для Logo.dev (src/components/MerchantLogo.tsx). Немає домену — падаємо на CategoryBadge. */
   domain?: string;
+  cancelUrl?: string;
 };
 
-// Топ-50 мерчантів: один словник обслуговує матчинг у OCR, дефолтну категорію
-// і брендовий колір рядка таймлайну (замість трьох окремих механізмів).
-export const merchantCatalog: MerchantCatalogEntry[] = [
+// ТИМЧАСОВО закоментовано — тестуємо застосунок без каталогу (findMerchant
+// нижче тепер завжди повертає undefined). Повернути — розкоментувати масив і
+// прибрати рядок `export const merchantCatalog: MerchantCatalogEntry[] = [];`.
+// export const merchantCatalog: MerchantCatalogEntry[] = [
+/*
   {
     name: 'Netflix',
     category: 'streaming',
     color: '#E44830',
     aliases: ['netflix'],
     domain: 'netflix.com',
+    cancelUrl: 'https://www.netflix.com/cancelplan',
   },
   {
     name: 'YouTube Premium',
@@ -26,6 +28,7 @@ export const merchantCatalog: MerchantCatalogEntry[] = [
     color: '#FD402C',
     aliases: ['youtube premium', 'youtube'],
     domain: 'youtube.com',
+    cancelUrl: 'https://www.youtube.com/paid_memberships',
   },
   {
     name: 'Spotify',
@@ -33,6 +36,7 @@ export const merchantCatalog: MerchantCatalogEntry[] = [
     color: '#1DB954',
     aliases: ['spotify'],
     domain: 'spotify.com',
+    cancelUrl: 'https://www.spotify.com/account/subscription/',
   },
   {
     name: 'Apple Music',
@@ -292,6 +296,8 @@ export const merchantCatalog: MerchantCatalogEntry[] = [
     domain: 'strava.com',
   },
 ];
+*/
+export const merchantCatalog: MerchantCatalogEntry[] = [];
 
 export const findMerchant = (rawText: string): MerchantCatalogEntry | undefined => {
   const normalized = rawText.toLowerCase();
